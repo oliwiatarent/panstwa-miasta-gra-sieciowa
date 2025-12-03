@@ -1,0 +1,8 @@
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/client.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/server.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/edit_cache.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/rebuild_cache.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/client_autogen_timestamp_deps.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/client_autogen.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/server_autogen_timestamp_deps.dir
+/Users/oliwia/Documents/GitHub/panstwa-miasta-gra-sieciowa/build/CMakeFiles/server_autogen.dir
