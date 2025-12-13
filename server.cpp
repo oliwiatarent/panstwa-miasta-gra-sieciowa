@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 
-pollfd fds[20];
+pollfd fds[21];
 int fdCount = 1;
 
 
@@ -53,6 +53,13 @@ int main(int argc, char** argv) {
             int clientSock = accept(servSock, (sockaddr*) &clientAddr, &clientAddrLen);
 
             printf("Nawiązano połączenie z: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+            if (fdCount == 20) {
+                write(clientSock, "Serwer pełny\n", 13);
+                shutdown(clientSock, SHUT_RDWR);
+                close(clientSock);
+                continue;
+            }
 
             fds[fdCount].fd = clientSock;
             fds[fdCount].events = POLLIN;
