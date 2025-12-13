@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <poll.h>
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -11,38 +12,54 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    char buf[255];
+    int fdCount = 1;
 
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    int servSock = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in serverAddr = {};
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(atoi(argv[1]));
 
-    sockaddr_in clientAddr = {};
-    socklen_t clientAddrSize = sizeof(clientAddr);
-
-    if (bind(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1) {
+    if (bind(servSock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1) {
         perror("Bind failed");
-        close(sock);
+        close(servSock);
         return 1;
     }
 
-    listen(sock, SOMAXCONN);
+    listen(servSock, SOMAXCONN);
+
+    pollfd fds[20];
+    fds[0].fd = servSock;
+    fds[0].events = POLLIN;
 
     while (true) {
-        int client_sock = accept(sock, (sockaddr*) &clientAddr, &clientAddrSize);
+        int ready = poll(fds, fdCount, -1);
 
-        printf("Nawiązano połączenie z: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+        if (fds[0].revents & POLLIN) {
+            sockaddr_in clientAddr = {};
+            socklen_t clientAddrLen = sizeof(clientAddr);
 
-        int bytes = read(sock, buf, 255);
-        write(1, buf, bytes);
-        write(client_sock, "Response\n", 9);
+            int clientSock = accept(servSock, (sockaddr*) &clientAddr, &clientAddrLen);
 
-        shutdown(client_sock, SHUT_RDWR);
-        close(client_sock);
+            printf("Nawiązano połączenie z: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+            fds[fdCount].fd = clientSock;
+            fds[fdCount].events = POLLIN;
+
+            fdCount++;
+        }
+
+        for (int i = 0; i < fdCount; i++) {
+            if (fds[i].revents & POLLIN) {
+                char buf[255]{};
+
+                int bytes = read(fds[i].fd, buf, 255);
+                printf("Wiadomość: %s", buf);
+                write(fds[i].fd, "Response\n", 9);
+            }
+        }
     }
 
-    close(sock);
+    close(servSock);
 }
