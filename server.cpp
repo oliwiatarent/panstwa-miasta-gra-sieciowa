@@ -6,13 +6,21 @@
 #include <netinet/in.h>
 #include <poll.h>
 
+pollfd fds[20];
+int fdCount = 1;
+
+
+void sendToAll(char* message, int bytes) {
+    for (int i = 1; i < fdCount; i++) {
+        write(fds[i].fd, message, bytes);
+    }
+}
+
 int main(int argc, char** argv) {
     if (argc != 2) {
         printf("Niepoprawne wykonanie: %s <numer_portu>\n", argv[0]);
         return 1;
     }
-
-    int fdCount = 1;
 
     int servSock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -20,6 +28,9 @@ int main(int argc, char** argv) {
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(atoi(argv[1]));
+
+    int one = 1;
+    setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     if (bind(servSock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1) {
         perror("Bind failed");
@@ -29,7 +40,6 @@ int main(int argc, char** argv) {
 
     listen(servSock, SOMAXCONN);
 
-    pollfd fds[20];
     fds[0].fd = servSock;
     fds[0].events = POLLIN;
 
@@ -55,8 +65,7 @@ int main(int argc, char** argv) {
                 char buf[255]{};
 
                 int bytes = read(fds[i].fd, buf, 255);
-                printf("Wiadomość: %s", buf);
-                write(fds[i].fd, "Response\n", 9);
+                sendToAll(buf, bytes);
             }
         }
     }
