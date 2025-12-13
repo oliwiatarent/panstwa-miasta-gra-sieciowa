@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
             }
 
             fds[fdCount].fd = clientSock;
-            fds[fdCount].events = POLLIN;
+            fds[fdCount].events = POLLIN | POLLHUP;
 
             fdCount++;
         }
@@ -73,6 +73,14 @@ int main(int argc, char** argv) {
 
                 int bytes = read(fds[i].fd, buf, 255);
                 sendToAll(buf, bytes);
+            }
+
+            if (fds[i].revents & POLLHUP) {
+                printf("Rozłączanie klienta numer %d\n", i);
+
+                fds[i] = fds[i - 1];
+
+                fdCount--;
             }
         }
     }
