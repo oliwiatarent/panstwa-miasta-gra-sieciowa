@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <thread>
+#include <signal.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -9,18 +13,22 @@
 pollfd fds[21];
 int fdCount = 1;
 
-
-void sendToAll(char* message, int bytes) {
+void sendToAll(const char* message, int bytes) {
     for (int i = 1; i < fdCount; i++) {
         write(fds[i].fd, message, bytes);
     }
 }
 
 int main(int argc, char** argv) {
+    signal(SIGPIPE, SIG_IGN);
+
     if (argc != 2) {
         printf("Niepoprawne wykonanie: %s <numer_portu>\n", argv[0]);
         return 1;
     }
+
+    bool start = false;
+    int counter = 10;
 
     int servSock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -44,7 +52,7 @@ int main(int argc, char** argv) {
     fds[0].events = POLLIN;
 
     while (true) {
-        int ready = poll(fds, fdCount, -1);
+        int ready = poll(fds, fdCount, 1000);
 
         if (fds[0].revents & POLLIN) {
             sockaddr_in clientAddr = {};
@@ -72,17 +80,34 @@ int main(int argc, char** argv) {
                 char buf[255]{};
 
                 int bytes = read(fds[i].fd, buf, 255);
-                sendToAll(buf, bytes);
+                if (strcmp(buf, "start\n") == 0) {
+                    start = true;
+                } else {
+                    sendToAll(buf, bytes);
+                }
             }
 
             if (fds[i].revents & POLLHUP) {
                 printf("Rozłączanie klienta numer %d\n", i);
+
+                shutdown(fds[i].fd, SHUT_RDWR);
+                close(fds[i].fd);
 
                 for (int j = i; j < fdCount; j++) {
                     fds[j] = fds[j + 1];
                 }
 
                 fdCount--;
+            }
+        }
+
+        if (start) {
+            std::string msg = "time: " + std::to_string(counter) + "\n";
+            sendToAll(msg.c_str(), msg.size());
+            counter--;
+            if (counter == -1) {
+                start = false;
+                counter = 10;
             }
         }
     }
