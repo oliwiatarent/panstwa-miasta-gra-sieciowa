@@ -4,6 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <thread>
+#include <vector>
+#include <map>
 #include <signal.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -27,7 +29,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    bool start = false;
+    std::map<int, std::string> responses;
+
+    bool stop = false;
+    bool endOfRound = false;
+
     int counter = 10;
 
     int servSock = socket(AF_INET, SOCK_STREAM, 0);
@@ -75,15 +81,18 @@ int main(int argc, char** argv) {
             fdCount++;
         }
 
-        for (int i = 0; i < fdCount; i++) {
+        for (int i = 1; i < fdCount; i++) {
             if (fds[i].revents & POLLIN) {
                 char buf[255]{};
 
                 int bytes = read(fds[i].fd, buf, 255);
-                if (strcmp(buf, "start\n") == 0) {
-                    start = true;
+                if (strcmp(buf, "stop\n") == 0) {
+                    stop = true;
                 } else {
-                    sendToAll(buf, bytes);
+                    if (responses.count(fds[i].fd) == 1)
+                        printf("Użytkownik %d już odpowiedział\n", fds[i].fd);
+                    else 
+                        responses.insert( {fds[i].fd, buf } );
                 }
             }
 
@@ -101,14 +110,25 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (start) {
+        if (stop) {
             std::string msg = "time: " + std::to_string(counter) + "\n";
             sendToAll(msg.c_str(), msg.size());
             counter--;
+
             if (counter == -1) {
-                start = false;
+                endOfRound = true;
+                stop = false;
                 counter = 10;
             }
+        }
+
+        if (endOfRound) {
+            for (auto response : responses) {
+                std::string msg = std::to_string(response.first) + " | " + response.second;
+                sendToAll(msg.c_str(), msg.size());
+            }
+            responses.clear();
+            endOfRound = false;
         }
     }
 
