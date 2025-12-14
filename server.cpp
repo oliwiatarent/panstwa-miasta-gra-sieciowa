@@ -78,7 +78,9 @@ int main(int argc, char** argv) {
             if (fds[i].revents & POLLHUP) {
                 printf("Rozłączanie klienta numer %d\n", i);
 
-                fds[i] = fds[i - 1];
+                for (int j = i; j < fdCount; j++) {
+                    fds[j] = fds[j + 1];
+                }
 
                 fdCount--;
             }
