@@ -19,6 +19,7 @@ class user{
     bool active;
     std::string room;
     std::string username;
+    bool username_set=false;
     user(){
         active = false;
     }
@@ -26,6 +27,7 @@ class user{
 
 user users[21];
 pollfd fds[21];
+char buf[255]{};
 int fdCount = 1;
 
 void sendToAll(const char* message, int bytes) {
@@ -89,7 +91,7 @@ int main(int argc, char** argv) {
     listen(servSock, SOMAXCONN);
 
     fds[0].fd = servSock;
-    fds[0].events = POLLIN;
+    fds[0].events = POLLIN | POLLHUP;
 
     while (true) {
         int ready = poll(fds, fdCount, 1000);
@@ -112,50 +114,50 @@ int main(int argc, char** argv) {
             fds[fdCount].fd = clientSock;
             fds[fdCount].events = POLLIN | POLLHUP;
 
-
-            while(1){
-                int bytes = read(fds[fdCount].fd, buf, 255);
-                //printf("%s\n",buf);
-                bool username_already_exists=false;
-                for(int i=1;i<fdCount;i++){
-                    std::string pom;
-                    pom.assign(buf,sizeof(buf));
-                    if(pom.compare(users[i].username)==0){
-                        username_already_exists=true;
-                        break;
-                    }
-                }
-                if(!username_already_exists){
-                    users[fdCount].username.assign(buf,sizeof(buf));
-                    users[fdCount].active=true;
-                    printf("user added: %s",users[fdCount].username.c_str());
-                    write(fds[fdCount].fd, "OK\n", sizeof("OK\n"));
-                    break;
-                }else{
-                    write(fds[fdCount].fd, "Username already in use\n", sizeof("Username already in use\n"));
-                    printf("user tried already used username\n");
-                }
-            }
-
             fdCount++;
         }
 
         for (int i = 1; i < fdCount; i++) {
             if (fds[i].revents & POLLIN) {
-                char buf[255]{};
-
-                int bytes = read(fds[i].fd, buf, 255);
-                if (strcmp(buf, "stop\n") == 0) {
-                    stop = true;
-                } else {
-                    if (responses.count(fds[i].fd) == 1)
-                        printf("Użytkownik %d już odpowiedział\n", fds[i].fd);
-                    else 
-                        responses.insert( { fds[i].fd, responseToVector(buf) } );
+                if(users[i].username_set==false){
+                    // printf("test\n");
+                    char buf[255]{};
+                    int bytes = read(fds[i].fd, buf, 255);
+                    // printf("%s\n",buf);
+                    bool username_already_exists=false;
+                    for(int i=1;i<fdCount;i++){
+                        std::string pom;
+                        pom.assign(buf,sizeof(buf));
+                        if(pom.compare(users[i].username)==0){
+                            username_already_exists=true;
+                            break;
+                        }
+                    }
+                    if(!username_already_exists){
+                        users[i].username.assign(buf,sizeof(buf));
+                        users[i].active=true;
+                        printf("user added: %s",users[i].username.c_str());
+                        write(fds[i].fd, "OK\n", sizeof("OK\n"));
+                        users[i].username_set=true;
+                    }else{
+                        write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
+                        printf("user tried already used username\n");
+                    }
+                }else{
+                    char buf[255]{};
+                    int bytes = read(fds[i].fd, buf, 255);
+                    if (strcmp(buf, "stop\n") == 0) {
+                        stop = true;
+                    } else {
+                        if (responses.count(fds[i].fd) == 1)
+                            printf("Użytkownik %d już odpowiedział\n", fds[i].fd);
+                        else 
+                            responses.insert( {fds[i].fd, responseToVector(buf) } );
+                    }
                 }
             }
 
-            if (fds[i].revents & POLLHUP) {
+            if (fds[i].revents &  POLLHUP) {
                 printf("Rozłączanie klienta numer %d\n", i);
 
                 shutdown(fds[i].fd, SHUT_RDWR);
@@ -163,6 +165,7 @@ int main(int argc, char** argv) {
 
                 for (int j = i; j < fdCount; j++) {
                     fds[j] = fds[j + 1];
+                    users[j] = users[j+1];
                 }
 
                 fdCount--;
