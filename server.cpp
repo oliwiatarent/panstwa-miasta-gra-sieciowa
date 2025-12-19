@@ -11,7 +11,20 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <cstring>
+#include <string>
 
+class user{
+    public: 
+    bool active;
+    std::string room;
+    std::string username;
+    user(){
+        active = false;
+    }
+};
+
+user users[21];
 pollfd fds[21];
 int fdCount = 1;
 
@@ -61,6 +74,7 @@ int main(int argc, char** argv) {
         int ready = poll(fds, fdCount, 1000);
 
         if (fds[0].revents & POLLIN) {
+            char buf[255]{};
             sockaddr_in clientAddr = {};
             socklen_t clientAddrLen = sizeof(clientAddr);
 
@@ -74,9 +88,33 @@ int main(int argc, char** argv) {
                 close(clientSock);
                 continue;
             }
-
             fds[fdCount].fd = clientSock;
             fds[fdCount].events = POLLIN | POLLHUP;
+
+
+            while(1){
+                int bytes = read(fds[fdCount].fd, buf, 255);
+                //printf("%s\n",buf);
+                bool username_already_exists=false;
+                for(int i=1;i<fdCount;i++){
+                    std::string pom;
+                    pom.assign(buf,sizeof(buf));
+                    if(pom.compare(users[i].username)==0){
+                        username_already_exists=true;
+                        break;
+                    }
+                }
+                if(!username_already_exists){
+                    users[fdCount].username.assign(buf,sizeof(buf));
+                    users[fdCount].active=true;
+                    printf("user %s added\n",users[fdCount].username.c_str());
+                    write(fds[fdCount].fd, "OK", sizeof("OK"));
+                    break;
+                }else{
+                    write(fds[fdCount].fd, "Username already in use", sizeof("Username already in use"));
+                    printf("user tried already used username\n");
+                }
+            }
 
             fdCount++;
         }

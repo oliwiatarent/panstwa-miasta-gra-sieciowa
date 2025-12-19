@@ -1,0 +1,4 @@
+/mnt/c/Users/szymw/Documents/panstwa-miasta/panstwa-miasta-gra-sieciowa/CMakeFiles/client.dir
+/mnt/c/Users/szymw/Documents/panstwa-miasta/panstwa-miasta-gra-sieciowa/CMakeFiles/server.dir
+/mnt/c/Users/szymw/Documents/panstwa-miasta/panstwa-miasta-gra-sieciowa/CMakeFiles/edit_cache.dir
+/mnt/c/Users/szymw/Documents/panstwa-miasta/panstwa-miasta-gra-sieciowa/CMakeFiles/rebuild_cache.dir
