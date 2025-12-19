@@ -34,6 +34,27 @@ void sendToAll(const char* message, int bytes) {
     }
 }
 
+std::vector<std::string> responseToVector(char* buf) {
+    std::vector<std::string> answers;
+    std::string answer;
+
+    int i = 0;
+    while (true) {
+        if (buf[i] == ' ') {
+            answers.push_back(answer);
+            answer = "";
+        } else if (buf[i] == '\n') {
+            answers.push_back(answer);
+            break;
+        } else {
+            answer += buf[i];
+        }
+        i++;
+    }
+
+    return answers;
+}
+
 int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
 
@@ -42,7 +63,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::map<int, std::string> responses;
+    std::map<int, std::vector<std::string>> responses;
 
     bool stop = false;
     bool endOfRound = false;
@@ -107,11 +128,11 @@ int main(int argc, char** argv) {
                 if(!username_already_exists){
                     users[fdCount].username.assign(buf,sizeof(buf));
                     users[fdCount].active=true;
-                    printf("user %s added\n",users[fdCount].username.c_str());
-                    write(fds[fdCount].fd, "OK", sizeof("OK"));
+                    printf("user added: %s",users[fdCount].username.c_str());
+                    write(fds[fdCount].fd, "OK\n", sizeof("OK\n"));
                     break;
                 }else{
-                    write(fds[fdCount].fd, "Username already in use", sizeof("Username already in use"));
+                    write(fds[fdCount].fd, "Username already in use\n", sizeof("Username already in use\n"));
                     printf("user tried already used username\n");
                 }
             }
@@ -130,7 +151,7 @@ int main(int argc, char** argv) {
                     if (responses.count(fds[i].fd) == 1)
                         printf("Użytkownik %d już odpowiedział\n", fds[i].fd);
                     else 
-                        responses.insert( {fds[i].fd, buf } );
+                        responses.insert( { fds[i].fd, responseToVector(buf) } );
                 }
             }
 
@@ -162,7 +183,11 @@ int main(int argc, char** argv) {
 
         if (endOfRound) {
             for (auto response : responses) {
-                std::string msg = std::to_string(response.first) + " | " + response.second;
+                std::string msg = std::to_string(response.first) + " | ";
+                for (std::string answer : response.second) {
+                    msg += answer + " ";
+                }
+                msg += "\n";
                 sendToAll(msg.c_str(), msg.size());
             }
             responses.clear();
