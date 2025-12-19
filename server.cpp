@@ -18,10 +18,13 @@ class user{
     public: 
     bool active;
     std::string room;
+    std::string CustomRoom;
     std::string username;
+    std::string recv;
     bool username_set=false;
     user(){
         active = false;
+        room="Start";
     }
 };
 
@@ -136,23 +139,40 @@ int main(int argc, char** argv) {
                     if(!username_already_exists){
                         users[i].username.assign(buf,sizeof(buf));
                         users[i].active=true;
-                        printf("user added: %s",users[i].username.c_str());
-                        write(fds[i].fd, "OK\n", sizeof("OK\n"));
+                        printf("user added: %s\n",users[i].username.c_str());
+                        write(fds[i].fd, "OK", sizeof("OK"));
                         users[i].username_set=true;
                     }else{
                         write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
                         printf("user tried already used username\n");
                     }
                 }else{
-                    char buf[255]{};
-                    int bytes = read(fds[i].fd, buf, 255);
+                    char buf[255];
+                    int bytes = read(fds[i].fd, buf, sizeof(buf));
+                    users[i].recv= responseToVector(buf)[0];
                     if (strcmp(buf, "stop\n") == 0) {
                         stop = true;
                     } else {
-                        if (responses.count(fds[i].fd) == 1)
-                            printf("Użytkownik %d już odpowiedział\n", fds[i].fd);
-                        else 
-                            responses.insert( {fds[i].fd, responseToVector(buf) } );
+
+                        if(users[i].room.compare("Start")==0){
+                            printf("user in the starting room\n");
+                            std::string pom;
+                            pom.assign("CreateNewRoom");
+                            
+                            printf("%ld %ld\n",users[i].recv.size(),pom.size());
+                            if(users[i].recv.compare("CreateNewRoom")==0){
+                                printf("user wants to create new room\n");
+                                write(fds[i].fd, "NewRoomCreated", sizeof("NewRoomCreated"));
+                                read(fds[i].fd, buf, sizeof(buf));
+                                users[i].recv.assign(buf,sizeof(buf));
+                                printf("name for new room good\n");
+                                write(fds[i].fd,"Good",sizeof("Good"));
+                                users[i].room = "CustomRoom";
+                                users[i].CustomRoom = users[i].recv;
+                            }
+                        }else if(users[i].room.compare("CustomRoom")){
+                            printf("DZIAŁA\n");
+                        }
                     }
                 }
             }

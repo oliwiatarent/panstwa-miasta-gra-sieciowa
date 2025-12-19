@@ -9,6 +9,8 @@
 
 int main(int argc, char *argv[]) {
 
+    std::string CurrentRoom="Start";
+    bool gameover=false;
     char* ip = argv[1];
     int port = atoi(argv[2]);
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -29,14 +31,35 @@ int main(int argc, char *argv[]) {
 
     strcpy(buf,"Username already in use");
     while(strcmp(buf,"Username already in use")==0){
-        scanf("%s", &username);
+        scanf("%s", username);
         write(sock, username, sizeof(username));
         read(sock,buf,sizeof(buf));
         printf("%s\n",buf);
     }
-
-    write(sock, "Request\n", 8);
-    int bytes = read(sock, buf, 255);
+    char sendbuf[255];
+    char recvbuf[255];
+    std::string recv;
+    while(!gameover){
+        if(CurrentRoom.compare("Start")==0){
+            printf("Type the action you want to take (CreateNewRoom for new room)\n");
+            scanf("%s", sendbuf);
+            write(sock, sendbuf, sizeof(sendbuf));
+            read(sock,recvbuf,sizeof(recvbuf));
+            printf("answer from server about new room creating %s\n",recvbuf);
+            recv.assign(recvbuf,sizeof(recvbuf));
+            if(recv.compare("NewRoomCreated")==0){
+                write(sock,sendbuf,sizeof(sendbuf));
+                read(sock,recvbuf,sizeof(recvbuf));
+                printf("answear about name to the new room %s\n",recvbuf);
+                recv.assign(recvbuf,sizeof(recvbuf));
+                if(recv.compare("Good")){
+                    CurrentRoom="CustomRoom";
+                }
+            }
+        }else if(CurrentRoom.compare("CustomRoom")==0){
+            printf("udalo sie\n");
+        }
+    }
 
     shutdown(sock, SHUT_RDWR);
     close(sock);
