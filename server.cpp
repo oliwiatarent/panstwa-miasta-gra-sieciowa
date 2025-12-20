@@ -139,40 +139,47 @@ int main(int argc, char** argv) {
                     if(!username_already_exists){
                         users[i].username.assign(buf,sizeof(buf));
                         users[i].active=true;
-                        printf("user added: %s\n",users[i].username.c_str());
-                        write(fds[i].fd, "OK", sizeof("OK"));
+                        printf("user added: %s",users[i].username.c_str());
+                        write(fds[i].fd, "OK\n", sizeof("OK\n"));
                         users[i].username_set=true;
                     }else{
                         write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
                         printf("user tried already used username\n");
                     }
                 }else{
-                    char buf[255];
+                    char buf[255]{};
                     int bytes = read(fds[i].fd, buf, sizeof(buf));
-                    users[i].recv= responseToVector(buf)[0];
+                    std::vector<std::string> response = responseToVector(buf);
+                    users[i].recv = response[0];
+
                     if (strcmp(buf, "stop\n") == 0) {
                         stop = true;
                     } else {
 
-                        if(users[i].room.compare("Start")==0){
-                            printf("user in the starting room\n");
-                            std::string pom;
-                            pom.assign("CreateNewRoom");
-                            
-                            printf("%ld %ld\n",users[i].recv.size(),pom.size());
-                            if(users[i].recv.compare("CreateNewRoom")==0){
-                                printf("user wants to create new room\n");
-                                write(fds[i].fd, "NewRoomCreated", sizeof("NewRoomCreated"));
-                                read(fds[i].fd, buf, sizeof(buf));
-                                users[i].recv.assign(buf,sizeof(buf));
-                                printf("name for new room good\n");
-                                write(fds[i].fd,"Good",sizeof("Good"));
-                                users[i].room = "CustomRoom";
-                                users[i].CustomRoom = users[i].recv;
-                            }
-                        }else if(users[i].room.compare("CustomRoom")){
-                            printf("DZIAŁA\n");
+                        if (users[i].recv.compare("CreateNewRoom") != 0) {
+                            responses.insert( {fds[i].fd, response} );
                         }
+
+                        if(users[i].recv.compare("CreateNewRoom")==0) {
+                            printf("user wants to create new room\n");
+                            write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
+                            read(fds[i].fd, buf, sizeof(buf));
+                            users[i].recv.assign(buf,sizeof(buf));
+                            printf("name for new room good\n");
+                            write(fds[i].fd,"Good\n",sizeof("Good\n"));
+                            users[i].room = "CustomRoom";
+                            users[i].CustomRoom = users[i].recv;
+                        }
+
+                        // if(users[i].room.compare("Start")==0){
+                        //     printf("user in the starting room\n");
+                        //     std::string pom;
+                        //     pom.assign("CreateNewRoom");
+                            
+                        //     printf("%ld %ld\n",users[i].recv.size(),pom.size());
+                        // } else if(users[i].room.compare("CustomRoom") == 0){
+                        //     printf("DZIAŁA\n");
+                        // }
                     }
                 }
             }
