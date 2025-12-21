@@ -30,7 +30,7 @@ ui_*.h
 Makefile*
 *build-*
 build/
-CMakeFiles
+CMakeFiles/
 *.qm
 *.prl
 
