@@ -31,6 +31,7 @@ class user{
     std::string username;
     std::string recv;
     bool username_set=false;
+    bool choosing_room_name = false;
     user(){
         active = false;
         room="Start";
@@ -136,29 +137,33 @@ int main(int argc, char** argv) {
                 if (bytes <= 0) {
                     disconnect = true;
                 } else {
+
                     if(users[i].username_set==false){
-                    // printf("test\n");
-                    // printf("%s\n",buf);
-                    bool username_already_exists=false;
-                    for(int i=1;i<fdCount;i++){
-                        std::string pom;
-                        pom.assign(buf,sizeof(buf));
-                        if(pom.compare(users[i].username)==0){
-                            username_already_exists=true;
-                            break;
+
+                        bool username_already_exists=false;
+
+                        for(int i=1;i<fdCount;i++){
+                            std::string pom;
+                            pom.assign(buf,sizeof(buf));
+                            if(pom.compare(users[i].username)==0){
+                                username_already_exists=true;
+                                break;
+                            }
                         }
-                    }
-                    if(!username_already_exists){
-                        users[i].username.assign(buf,sizeof(buf));
-                        users[i].active=true;
-                        printf("user added: %s",users[i].username.c_str());
-                        write(fds[i].fd, "OK\n", sizeof("OK\n"));
-                        users[i].username_set=true;
-                    }else{
-                        write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
-                        printf("user tried already used username\n");
-                    }
-                    }else{
+
+                        if (!username_already_exists) {
+                            users[i].username.assign(buf,sizeof(buf));
+                            users[i].active=true;
+                            printf("user added: %s",users[i].username.c_str());
+                            write(fds[i].fd, "OK\n", sizeof("OK\n"));
+                            users[i].username_set=true;
+                        } else {
+                            write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
+                            printf("user tried already used username\n");
+                        }
+
+                    } else {
+
                         std::vector<std::string> response = responseToVector(buf);
                         users[i].recv = response[0];
 
@@ -166,19 +171,22 @@ int main(int argc, char** argv) {
                             stop = true;
                         } else {
 
-                            if (users[i].recv.compare("CreateNewRoom") != 0) {
-                                responses.insert( {fds[i].fd, response} );
-                            }
+                            if (users[i].recv.compare("CreateNewRoom") == 0) {
 
-                            if(users[i].recv.compare("CreateNewRoom")==0) {
-                                printf("user wants to create new room\n");
-                                write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
-                                read(fds[i].fd, buf, sizeof(buf));
-                                users[i].recv.assign(buf,sizeof(buf));
-                                printf("name for new room good\n");
-                                write(fds[i].fd,"Good\n",sizeof("Good\n"));
-                                users[i].room = "CustomRoom";
-                                users[i].CustomRoom = users[i].recv;
+                                if (response.size() == 2) {
+
+                                    printf("New room created: %s\n", response[1].c_str());
+                                    write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
+
+                                    users[i].room = "CustomRoom";
+                                    users[i].CustomRoom = response[1];
+
+                                } else {
+                                    printf("Incorrect command\n");
+                                }
+
+                            } else {
+                                responses.insert( {fds[i].fd, response} );
                             }
 
                             // if(users[i].room.compare("Start")==0){
