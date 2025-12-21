@@ -32,6 +32,7 @@ class user{
     std::vector<std::string> recv;
     bool username_set=false;
     bool choosing_room_name = false;
+    bool InActiveGame = false;
     user(){
         active = false;
         room="Start";
@@ -45,6 +46,7 @@ class gameroom{
     user players[10];
     int NumberOfPlayers=1;
     std::string RoomName;
+    bool ActiveGame = false;
 };
 
 user users[MAX_CLIENTS];
@@ -223,7 +225,7 @@ int main(int argc, char** argv) {
                                 }else {
                                     responses.insert( {fds[i].fd, response} );
                                 }
-                            }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0){
+                            }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0 && users[i].InActiveGame == false){
                                 if (users[i].recv[0].compare("AddPlayerToRoom") == 0) {
 
                                     if (response.size() == 2) {
@@ -253,9 +255,29 @@ int main(int argc, char** argv) {
                                         printf("Incorrect command\n");
                                     }
 
+                                }else if(users[i].recv[0].compare("StartGame") == 0){
+                                    users[i].InActiveGame = true;
+                                    int RoomIndex=-1;
+                                    for(int j=1;j<NumberOfRooms;j++){
+                                        if(strcmp(GameRooms[j].RoomName.c_str(),users[i].CustomRoom.c_str())==0){
+                                            GameRooms[j].ActiveGame = true;
+                                            RoomIndex=j;
+                                        }
+                                    }
+                                    if(RoomIndex != -1){
+                                        for(int j=1;j<NumberOfUsers;j++){
+                                            if(strcmp(users[j].CustomRoom.c_str(),GameRooms[RoomIndex].RoomName.c_str())==0){
+                                                users[j].InActiveGame=true;
+                                                write(fds[j].fd,"Your game started\n",sizeof("Your game started\n"));
+                                            }
+                                        }
+                                        printf("activeted game for room and all players\n");
+                                    }
                                 } else {
                                     responses.insert( {fds[i].fd, response} );
                                 }
+                            }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0 && users[i].InActiveGame == true){
+                                
                             }
                         }
                         }
