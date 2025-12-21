@@ -14,6 +14,8 @@
 #include <cstring>
 #include <string>
 
+#define MAX_CLIENTS 99999
+
 class user{
     public: 
     bool active;
@@ -28,8 +30,8 @@ class user{
     }
 };
 
-user users[21];
-pollfd fds[21];
+user users[MAX_CLIENTS];
+pollfd fds[MAX_CLIENTS];
 char buf[255]{};
 int fdCount = 1;
 
@@ -106,14 +108,13 @@ int main(int argc, char** argv) {
 
             int clientSock = accept(servSock, (sockaddr*) &clientAddr, &clientAddrLen);
 
-            printf("Nawiązano połączenie z: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-
-            if (fdCount == 20) {
-                write(clientSock, "Serwer pełny\n", 13);
-                shutdown(clientSock, SHUT_RDWR);
-                close(clientSock);
+            if (clientSock == -1) {
+                printf("Wystąpił błąd przy akceptowaniu połączenia\n");
                 continue;
             }
+
+            printf("Nawiązano połączenie z: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
             fds[fdCount].fd = clientSock;
             fds[fdCount].events = POLLIN | POLLHUP;
 
