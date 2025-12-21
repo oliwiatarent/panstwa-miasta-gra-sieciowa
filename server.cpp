@@ -29,19 +29,31 @@ class user{
     std::string room;
     std::string CustomRoom;
     std::string username;
-    std::string recv;
+    std::vector<std::string> recv;
     bool username_set=false;
     bool choosing_room_name = false;
     user(){
         active = false;
         room="Start";
+        CustomRoom="";
     }
+};
+
+class gameroom{
+    public:
+    user owner;
+    user players[10];
+    int NumberOfPlayers=1;
+    std::string RoomName;
 };
 
 user users[MAX_CLIENTS];
 pollfd fds[MAX_CLIENTS];
 char buf[255]{};
 int fdCount = 1;
+int NumberOfUsers=1;
+int NumberOfRooms=1;
+gameroom GameRooms[10];
 
 void sendToAll(const char* message, int bytes) {
     for (int i = 1; i < fdCount; i++) {
@@ -120,6 +132,7 @@ int main(int argc, char** argv) {
             fds[fdCount].events = POLLIN | POLLHUP | POLLERR;
 
             fdCount++;
+            NumberOfUsers++;
         }
 
         for (int i = 1; i < fdCount; i++) {
@@ -152,7 +165,7 @@ int main(int argc, char** argv) {
                         }
 
                         if (!username_already_exists) {
-                            users[i].username.assign(buf,sizeof(buf));
+                            users[i].username=responseToVector(buf)[0];
                             users[i].active=true;
                             printf("user added: %s",users[i].username.c_str());
                             write(fds[i].fd, "OK\n", sizeof("OK\n"));
@@ -165,41 +178,69 @@ int main(int argc, char** argv) {
                     } else {
 
                         std::vector<std::string> response = responseToVector(buf);
-                        users[i].recv = response[0];
+                        users[i].recv = response;
 
                         if (strcmp(buf, "stop\n") == 0) {
                             stop = true;
                         } else {
+                            if (users[i].room.compare("Start")==0){
+                                if (users[i].recv[0].compare("CreateNewRoom") == 0) {
 
-                            if (users[i].recv.compare("CreateNewRoom") == 0) {
+                                    if (response.size() == 2) {
 
-                                if (response.size() == 2) {
+                                        printf("New room created: %s\n", response[1].c_str());
+                                        write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
 
-                                    printf("New room created: %s\n", response[1].c_str());
-                                    write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
+                                        users[i].room = "CustomRoom";
+                                        users[i].CustomRoom = users[i].recv[1];
+                                        GameRooms[NumberOfRooms].RoomName = users[i].recv[1];
+                                        GameRooms[NumberOfRooms].players[GameRooms[NumberOfRooms].NumberOfPlayers]=users[i];
+                                        GameRooms[NumberOfRooms].NumberOfPlayers++;
+                                        NumberOfRooms++;
 
-                                    users[i].room = "CustomRoom";
-                                    users[i].CustomRoom = response[1];
+                                    } else {
+                                        printf("Incorrect command\n");
+                                    }
 
                                 } else {
-                                    printf("Incorrect command\n");
+                                    responses.insert( {fds[i].fd, response} );
                                 }
+                            }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0){
+                                if (users[i].recv[0].compare("AddPlayerToRoom") == 0) {
 
-                            } else {
-                                responses.insert( {fds[i].fd, response} );
+                                    if (response.size() == 2) {
+
+                                        printf("Player added: %s\n", users[i].recv[1].c_str());
+                                        write(fds[i].fd, "AddedPlayer\n", sizeof("AddedPlayer\n"));
+                                        
+                                        for(int j=1;j<NumberOfRooms;j++){
+                                            if(strcmp(users[i].CustomRoom.c_str(), GameRooms[j].RoomName.c_str())==0){
+                                                printf("Room exists!\n");
+                                                for(int k=1;k<NumberOfUsers;k++){
+                                                    printf("%d\n",NumberOfUsers);
+                                                    printf("searching for player... %s %s\n", users[i].recv[1].c_str(),users[k].username.c_str());
+                                                    if(strcmp(users[i].recv[1].c_str(),users[k].username.c_str())==0){
+                                                        GameRooms[j].players[GameRooms[j].NumberOfPlayers]=users[k];
+                                                        GameRooms[j].NumberOfPlayers++;
+                                                        users[k].room = "CustomRoom";
+                                                        users[k].CustomRoom = GameRooms[k].RoomName;
+                                                        printf("success!!!!\n");
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+
+                                    } else {
+                                        printf("Incorrect command\n");
+                                    }
+
+                                } else {
+                                    responses.insert( {fds[i].fd, response} );
+                                }
                             }
-
-                            // if(users[i].room.compare("Start")==0){
-                            //     printf("user in the starting room\n");
-                            //     std::string pom;
-                            //     pom.assign("CreateNewRoom");
-                                
-                            //     printf("%ld %ld\n",users[i].recv.size(),pom.size());
-                            // } else if(users[i].room.compare("CustomRoom") == 0){
-                            //     printf("DZIAŁA\n");
-                            // }
                         }
-                    }
+                        }
                 }
             }
 
