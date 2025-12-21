@@ -3,18 +3,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <thread>
-#include <vector>
-#include <map>
 #include <signal.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <poll.h>
 #include <cstring>
 #include <string>
+#include <thread>
+#include <vector>
+#include <map>
 
 #define MAX_CLIENTS 99999
+
+std::map<int, std::vector<std::string>> responses;
+
+bool stop = false;
+bool endOfRound = false;
+
+int counter = 10;
 
 class user{
     public: 
@@ -70,13 +77,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::map<int, std::vector<std::string>> responses;
-
-    bool stop = false;
-    bool endOfRound = false;
-
-    int counter = 10;
-
     int servSock = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in serverAddr = {};
@@ -116,17 +116,28 @@ int main(int argc, char** argv) {
             printf("Nawiązano połączenie z: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 
             fds[fdCount].fd = clientSock;
-            fds[fdCount].events = POLLIN | POLLHUP;
+            fds[fdCount].events = POLLIN | POLLHUP | POLLERR;
 
             fdCount++;
         }
 
         for (int i = 1; i < fdCount; i++) {
-            if (fds[i].revents & POLLIN) {
-                if(users[i].username_set==false){
+
+            bool disconnect = false;
+
+            if (fds[i].revents & (POLLHUP | POLLERR)) {
+                disconnect = true;
+            }
+
+            if ((fds[i].revents & POLLIN) && !disconnect) {
+                char buf[255]{};
+                int bytes = read(fds[i].fd, buf, 255);
+
+                if (bytes <= 0) {
+                    disconnect = true;
+                } else {
+                    if(users[i].username_set==false){
                     // printf("test\n");
-                    char buf[255]{};
-                    int bytes = read(fds[i].fd, buf, 255);
                     // printf("%s\n",buf);
                     bool username_already_exists=false;
                     for(int i=1;i<fdCount;i++){
@@ -147,45 +158,44 @@ int main(int argc, char** argv) {
                         write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
                         printf("user tried already used username\n");
                     }
-                }else{
-                    char buf[255]{};
-                    int bytes = read(fds[i].fd, buf, sizeof(buf));
-                    std::vector<std::string> response = responseToVector(buf);
-                    users[i].recv = response[0];
+                    }else{
+                        std::vector<std::string> response = responseToVector(buf);
+                        users[i].recv = response[0];
 
-                    if (strcmp(buf, "stop\n") == 0) {
-                        stop = true;
-                    } else {
+                        if (strcmp(buf, "stop\n") == 0) {
+                            stop = true;
+                        } else {
 
-                        if (users[i].recv.compare("CreateNewRoom") != 0) {
-                            responses.insert( {fds[i].fd, response} );
+                            if (users[i].recv.compare("CreateNewRoom") != 0) {
+                                responses.insert( {fds[i].fd, response} );
+                            }
+
+                            if(users[i].recv.compare("CreateNewRoom")==0) {
+                                printf("user wants to create new room\n");
+                                write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
+                                read(fds[i].fd, buf, sizeof(buf));
+                                users[i].recv.assign(buf,sizeof(buf));
+                                printf("name for new room good\n");
+                                write(fds[i].fd,"Good\n",sizeof("Good\n"));
+                                users[i].room = "CustomRoom";
+                                users[i].CustomRoom = users[i].recv;
+                            }
+
+                            // if(users[i].room.compare("Start")==0){
+                            //     printf("user in the starting room\n");
+                            //     std::string pom;
+                            //     pom.assign("CreateNewRoom");
+                                
+                            //     printf("%ld %ld\n",users[i].recv.size(),pom.size());
+                            // } else if(users[i].room.compare("CustomRoom") == 0){
+                            //     printf("DZIAŁA\n");
+                            // }
                         }
-
-                        if(users[i].recv.compare("CreateNewRoom")==0) {
-                            printf("user wants to create new room\n");
-                            write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
-                            read(fds[i].fd, buf, sizeof(buf));
-                            users[i].recv.assign(buf,sizeof(buf));
-                            printf("name for new room good\n");
-                            write(fds[i].fd,"Good\n",sizeof("Good\n"));
-                            users[i].room = "CustomRoom";
-                            users[i].CustomRoom = users[i].recv;
-                        }
-
-                        // if(users[i].room.compare("Start")==0){
-                        //     printf("user in the starting room\n");
-                        //     std::string pom;
-                        //     pom.assign("CreateNewRoom");
-                            
-                        //     printf("%ld %ld\n",users[i].recv.size(),pom.size());
-                        // } else if(users[i].room.compare("CustomRoom") == 0){
-                        //     printf("DZIAŁA\n");
-                        // }
                     }
                 }
             }
 
-            if (fds[i].revents &  POLLHUP) {
+            if (disconnect) {
                 printf("Rozłączanie klienta numer %d\n", i);
 
                 shutdown(fds[i].fd, SHUT_RDWR);
