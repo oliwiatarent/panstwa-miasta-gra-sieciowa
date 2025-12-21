@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
                         if (!username_already_exists) {
                             users[i].username=responseToVector(buf)[0];
                             users[i].active=true;
-                            printf("user added: %s",users[i].username.c_str());
+                            printf("user added: %s\n",users[i].username.c_str());
                             write(fds[i].fd, "OK\n", sizeof("OK\n"));
                             users[i].username_set=true;
                         } else {
@@ -202,7 +202,25 @@ int main(int argc, char** argv) {
                                         printf("Incorrect command\n");
                                     }
 
-                                } else {
+                                } else if(users[i].recv[0].compare("JoinRoom") == 0){
+                                    if (response.size() == 2) {
+
+                                        write(fds[i].fd, "Joining Room\n", sizeof("Joining Room\n"));
+
+                                        for(int j=1;j<NumberOfRooms;j++){
+                                            if(strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str())==0){
+                                                GameRooms[j].players[GameRooms[j].NumberOfPlayers]=users[i];
+                                                GameRooms[j].NumberOfPlayers++;
+                                                printf("Joined Room: %s\n", users[i].recv[1].c_str());
+                                                users[i].room = "CustomRoom";
+                                                users[i].CustomRoom = users[i].recv[1];
+                                            }
+                                        }
+
+                                    } else {
+                                        printf("Incorrect command\n");
+                                    }
+                                }else {
                                     responses.insert( {fds[i].fd, response} );
                                 }
                             }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0){
