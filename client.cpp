@@ -1,16 +1,26 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <string>
 #include <cstring>
 
-int main(int argc, char *argv[]) {
+bool logged_in = false;
+std::string current_room = "Start";
+char username[255];
 
-    std::string CurrentRoom="Start";
-    bool gameover=false;
+pollfd fds[2];
+
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Niepoprawne wykonanie: %s <numer_portu>\n", argv[0]);
+    }
+
     char* ip = argv[1];
     int port = atoi(argv[2]);
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -26,38 +36,68 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    char buf[255];
-    char username[20];
+    fds[0].fd = 1;
+    fds[0].events = POLLIN;
+    fds[1].fd = sock;
+    fds[1].events = POLLIN | POLLHUP | POLLERR;
 
-    strcpy(buf,"Username already in use");
-    while(strcmp(buf,"Username already in use")==0){
-        scanf("%s", username);
-        write(sock, username, sizeof(username));
-        read(sock,buf,sizeof(buf));
-        printf("%s\n",buf);
-    }
-    char sendbuf[255];
-    char recvbuf[255];
-    std::string recv;
-    while(!gameover){
-        if(CurrentRoom.compare("Start")==0){
-            printf("Type the action you want to take (CreateNewRoom for new room)\n");
-            scanf("%s", sendbuf);
-            write(sock, sendbuf, sizeof(sendbuf));
-            read(sock,recvbuf,sizeof(recvbuf));
-            printf("answer from server about new room creating %s\n",recvbuf);
-            recv.assign(recvbuf,sizeof(recvbuf));
-            if(recv.compare("NewRoomCreated")==0){
-                write(sock,sendbuf,sizeof(sendbuf));
-                read(sock,recvbuf,sizeof(recvbuf));
-                printf("answear about name to the new room %s\n",recvbuf);
-                recv.assign(recvbuf,sizeof(recvbuf));
-                if(recv.compare("Good")){
-                    CurrentRoom="CustomRoom";
-                }
+    while (true) {
+        int ready = poll(fds, 2, -1);
+        char buf[255]{};
+        bool disconnect = false;
+
+        if (fds[1].revents & (POLLHUP | POLLERR)) {
+            disconnect = true;
+        }
+
+        if ((fds[0].revents & POLLIN) && !disconnect) {
+            int bytes = read(1, buf, 255);
+            write(sock, buf, bytes);
+
+            if (!logged_in) {
+                strcpy(username, buf);
+                username[strcspn(username, "\n")] = '\0';
             }
-        }else if(CurrentRoom.compare("CustomRoom")==0){
-            printf("udalo sie\n");
+        }
+
+        if ((fds[1].revents & POLLIN) && !disconnect) {
+            int bytes = read(sock, buf, 255);
+
+            if (!logged_in) {
+                if (strcmp(buf, "Username available") == 0) {
+                    logged_in = true;
+                    printf("Zalogowano jako: %s\n", username);
+                } else {
+                    printf("Podana nazwa użytkownika jest już w użyciu. Spróbuj ponownie.\n");
+                }
+
+                continue;
+            }
+
+            printf("%s\n", buf);
+            
+            if (strcmp(buf, "New Room Created") == 0) {
+                // tutaj dodanie do pokoju
+                printf("test new room created\n");
+
+                continue;
+            }
+
+            if (strcmp(buf, "Joining Room") == 0) {
+                // tutaj dodanie do pokoju
+                printf("test joining room\n");
+
+                continue;
+            }
+        }
+
+        if (disconnect) {
+            printf("Nastąpiło rozłączenie z serwerem\n");
+
+            shutdown(sock, SHUT_RDWR);
+            close(sock);
+
+            exit(0);
         }
     }
 

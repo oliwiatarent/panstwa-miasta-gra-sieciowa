@@ -153,14 +153,16 @@ int main(int argc, char** argv) {
                     disconnect = true;
                 } else {
 
+                    std::vector<std::string> response = responseToVector(buf);
+
                     if(users[i].username_set==false){
 
                         bool username_already_exists=false;
+                        std::string pom = response[0];
 
                         for(int i=1;i<fdCount;i++){
-                            std::string pom;
-                            pom.assign(buf,sizeof(buf));
-                            if(pom.compare(users[i].username)==0){
+                            
+                            if(strcmp(users[i].username.c_str(), pom.c_str())==0){
                                 username_already_exists=true;
                                 break;
                             }
@@ -170,28 +172,28 @@ int main(int argc, char** argv) {
                             users[i].username=responseToVector(buf)[0];
                             users[i].active=true;
                             printf("user added: %s\n",users[i].username.c_str());
-                            write(fds[i].fd, "OK\n", sizeof("OK\n"));
+                            write(fds[i].fd, "Username available", sizeof("Username available"));
                             users[i].username_set=true;
                         } else {
-                            write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
+                            write(fds[i].fd, "Username already in use", sizeof("Username already in use"));
                             printf("user tried already used username\n");
                         }
 
                     } else {
 
-                        std::vector<std::string> response = responseToVector(buf);
                         users[i].recv = response;
 
                         if (strcmp(buf, "stop\n") == 0) {
                             stop = true;
                         } else {
                             if (users[i].room.compare("Start")==0){
-                                if (users[i].recv[0].compare("CreateNewRoom") == 0) {
+
+                                if (strcmp(users[i].recv[0].c_str(), "CreateNewRoom") == 0) {
 
                                     if (response.size() == 2) {
 
                                         printf("New room created: %s\n", response[1].c_str());
-                                        write(fds[i].fd, "NewRoomCreated\n", sizeof("NewRoomCreated\n"));
+                                        write(fds[i].fd, "New Room Created", sizeof("New Room Created"));
 
                                         users[i].room = "CustomRoom";
                                         users[i].CustomRoom = users[i].recv[1];
@@ -204,13 +206,15 @@ int main(int argc, char** argv) {
                                         printf("Incorrect command\n");
                                     }
 
-                                } else if(users[i].recv[0].compare("JoinRoom") == 0){
+                                } else if(strcmp(users[i].recv[0].c_str(), "JoinRoom") == 0){
+                                    
                                     if (response.size() == 2) {
-
-                                        write(fds[i].fd, "Joining Room\n", sizeof("Joining Room\n"));
+                                        
+                                        printf("Joining room\n");
 
                                         for(int j=1;j<NumberOfRooms;j++){
                                             if(strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str())==0){
+                                                write(fds[i].fd, "Joining Room", sizeof("Joining Room"));
                                                 GameRooms[j].players[GameRooms[j].NumberOfPlayers]=users[i];
                                                 GameRooms[j].NumberOfPlayers++;
                                                 printf("Joined Room: %s\n", users[i].recv[1].c_str());
@@ -222,8 +226,6 @@ int main(int argc, char** argv) {
                                     } else {
                                         printf("Incorrect command\n");
                                     }
-                                }else {
-                                    responses.insert( {fds[i].fd, response} );
                                 }
                             }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0 && users[i].InActiveGame == false){
                                 if (users[i].recv[0].compare("AddPlayerToRoom") == 0) {
@@ -255,7 +257,7 @@ int main(int argc, char** argv) {
                                         printf("Incorrect command\n");
                                     }
 
-                                }else if(users[i].recv[0].compare("StartGame") == 0){
+                                }else if(strcmp(users[i].recv[0].c_str(), "StartGame") == 0){
                                     users[i].InActiveGame = true;
                                     int RoomIndex=-1;
                                     for(int j=1;j<NumberOfRooms;j++){
@@ -268,24 +270,22 @@ int main(int argc, char** argv) {
                                         for(int j=1;j<NumberOfUsers;j++){
                                             if(strcmp(users[j].CustomRoom.c_str(),GameRooms[RoomIndex].RoomName.c_str())==0){
                                                 users[j].InActiveGame=true;
-                                                write(fds[j].fd,"Your game started\n",sizeof("Your game started\n"));
+                                                write(fds[j].fd,"Your game started",sizeof("Your game started"));
                                             }
                                         }
                                         printf("activeted game for room and all players\n");
                                     }
-                                } else {
-                                    responses.insert( {fds[i].fd, response} );
                                 }
                             }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0 && users[i].InActiveGame == true){
-                                
+                                responses.insert( {fds[i].fd, response} );
                             }
                         }
-                        }
+                    }
                 }
             }
 
             if (disconnect) {
-                printf("Rozłączanie klienta numer %d\n", i);
+                printf("Rozłączanie klienta numer %d\n", fds[i].fd);
 
                 shutdown(fds[i].fd, SHUT_RDWR);
                 close(fds[i].fd);
@@ -301,7 +301,7 @@ int main(int argc, char** argv) {
         }
 
         if (stop) {
-            std::string msg = "time: " + std::to_string(counter) + "\n";
+            std::string msg = "time: " + std::to_string(counter);
             sendToAll(msg.c_str(), msg.size());
             counter--;
 
@@ -318,7 +318,6 @@ int main(int argc, char** argv) {
                 for (std::string answer : response.second) {
                     msg += answer + " ";
                 }
-                msg += "\n";
                 sendToAll(msg.c_str(), msg.size());
             }
             responses.clear();
