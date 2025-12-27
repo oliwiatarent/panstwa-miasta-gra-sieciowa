@@ -26,6 +26,7 @@ int counter = 10;
 
 class user{
     public: 
+    int points=0;
     bool active;
     std::string word[5];
     std::string room;
@@ -47,11 +48,11 @@ class gameroom{
     std::chrono::_V2::system_clock::time_point StartTime;
     std::chrono::_V2::system_clock::time_point StopTime;
     bool EndGame = false;
-    int TimeLimit=60;
-    int StopLimit=10;
+    int TimeLimit=60000;
+    int StopLimit=10000;
     char GameLetter='A';
     user owner;
-    user players[10];
+    int players[10];
     int NumberOfPlayers=1;
     std::string RoomName;
     bool ActiveGame = false;
@@ -206,7 +207,7 @@ int main(int argc, char** argv) {
                                         users[i].room = "CustomRoom";
                                         users[i].CustomRoom = users[i].recv[1];
                                         GameRooms[NumberOfRooms].RoomName = users[i].recv[1];
-                                        GameRooms[NumberOfRooms].players[GameRooms[NumberOfRooms].NumberOfPlayers]=users[i];
+                                        GameRooms[NumberOfRooms].players[GameRooms[NumberOfRooms].NumberOfPlayers]=i;
                                         GameRooms[NumberOfRooms].NumberOfPlayers++;
                                         NumberOfRooms++;
 
@@ -223,7 +224,7 @@ int main(int argc, char** argv) {
                                         for(int j=1;j<NumberOfRooms;j++){
                                             if(strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str())==0){
                                                 write(fds[i].fd, "Joining Room", sizeof("Joining Room"));
-                                                GameRooms[j].players[GameRooms[j].NumberOfPlayers]=users[i];
+                                                GameRooms[j].players[GameRooms[j].NumberOfPlayers]=i;
                                                 GameRooms[j].NumberOfPlayers++;
                                                 printf("Joined Room: %s\n", users[i].recv[1].c_str());
                                                 users[i].room = "CustomRoom";
@@ -250,7 +251,7 @@ int main(int argc, char** argv) {
                                                     printf("%d\n",NumberOfUsers);
                                                     printf("searching for player... %s %s\n", users[i].recv[1].c_str(),users[k].username.c_str());
                                                     if(strcmp(users[i].recv[1].c_str(),users[k].username.c_str())==0){
-                                                        GameRooms[j].players[GameRooms[j].NumberOfPlayers]=users[k];
+                                                        GameRooms[j].players[GameRooms[j].NumberOfPlayers]=k;
                                                         GameRooms[j].NumberOfPlayers++;
                                                         users[k].room = "CustomRoom";
                                                         users[k].CustomRoom = GameRooms[k].RoomName;
@@ -337,28 +338,57 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (stop) {
-            std::string msg = "time: " + std::to_string(counter);
-            sendToAll(msg.c_str(), msg.size());
-            counter--;
-
-            if (counter == -1) {
-                endOfRound = true;
-                stop = false;
-                counter = 10;
-            }
-        }
-
-        if (endOfRound) {
-            for (auto response : responses) {
-                std::string msg = std::to_string(response.first) + " | ";
-                for (std::string answer : response.second) {
-                    msg += answer + " ";
+        for(int i=1;i<NumberOfRooms;i++){
+            if(GameRooms[i].ActiveGame)if(GameRooms[i].TimeLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StartTime).count()/1000000) || (GameRooms[i].EndGame == true && GameRooms[i].StopLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StopTime).count()/1000000))){
+                int MaxPoints=0;
+                std::vector <std::string> winners;
+                for(int j=1;j<GameRooms[i].NumberOfPlayers;j++){
+                    users[GameRooms[i].players[j]].InActiveGame = false;
+                    for(int k=0;k<5;k++){
+                        if(users[GameRooms[i].players[j]].word[k][0] == GameRooms[i].GameLetter){
+                            bool p20=true;
+                            for(int l=0;l<GameRooms[i].NumberOfPlayers;l++){
+                                if(l!=GameRooms[i].players[j]){
+                                    if(strcmp(users[GameRooms[i].players[j]].word[k].c_str(),users[l].word[k].c_str())==0){
+                                        p20=false;
+                                        users[GameRooms[i].players[j]].points+=10;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(p20){
+                                users[GameRooms[i].players[j]].points+=20;
+                            }
+                        }else{
+                            printf("expected %c got %s\n",GameRooms[i].GameLetter,users[GameRooms[i].players[j]].word[k].c_str());
+                        }
+                    }
+                    printf("player %s got %d points\n", users[GameRooms[i].players[j]].username.c_str(),users[GameRooms[i].players[j]].points);
+                    if(users[GameRooms[i].players[j]].points>MaxPoints){
+                        MaxPoints = users[GameRooms[i].players[j]].points;
+                        winners.clear();
+                        winners.push_back(users[GameRooms[i].players[j]].username);
+                    }else if(users[GameRooms[i].players[j]].points == MaxPoints){
+                        winners.push_back(users[GameRooms[i].players[j]].username);
+                    }
                 }
-                sendToAll(msg.c_str(), msg.size());
+                if(winners.size()>1){
+                    printf("winners:\n");
+                }else{
+                    printf("winner:\n");
+                }
+                for(int k=0;k<winners.size();k++){
+                    printf("%s\n",winners[k].c_str());
+                }
+                GameRooms[i].ActiveGame=false;
+                GameRooms[i].EndGame=false;
+                for(int j=1;j<GameRooms[i].NumberOfPlayers;j++){
+                    users[GameRooms[i].players[j]].points=0;
+                    for(int k=0;k<5;k++){
+                        users[GameRooms[i].players[j]].word[k]="";
+                    }
+                }
             }
-            responses.clear();
-            endOfRound = false;
         }
     }
 
