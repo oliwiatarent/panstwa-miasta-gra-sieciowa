@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
                                     }
                                 }else if(strcmp(users[i].recv[0].c_str(), "KickPlayer") == 0){
                                     int RoomIndex=findroom(users[i].CustomRoom);
-                                    if(GameRooms[RoomIndex].owner == i || strcmp(users[i].username.c_str(),"admin")==0){
+                                    if((GameRooms[RoomIndex].owner == i || strcmp(users[i].username.c_str(),"admin")==0) && strcmp(users[i].username.c_str(),users[i].recv[1].c_str())!=0){
                                         bool found=false;
                                         for(int j=0;j<GameRooms[RoomIndex].NumberOfPlayers;j++){
                                             if(strcmp(users[GameRooms[RoomIndex].players[j]].username.c_str(), users[i].recv[1].c_str()) == 0){
@@ -317,6 +317,20 @@ int main(int argc, char** argv) {
                                     }else{
                                         printf("tried to kick player without perms\n");
                                     }
+                                }else if(strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0){
+                                    int RoomIndex=findroom(users[i].CustomRoom);
+                                    users[i].room="Start";
+                                    users[i].CustomRoom="";
+                                    bool found=false;
+                                    GameRooms[RoomIndex].NumberOfPlayers--;
+                                    
+                                    for(int j=0;j<GameRooms[RoomIndex].NumberOfPlayers;j++){
+                                        if(i==GameRooms[RoomIndex].players[j]){
+                                            found=true;
+                                        }
+                                        if(found) GameRooms[RoomIndex].players[j]=GameRooms[RoomIndex].players[j+1];
+                                    }  
+                                    if(GameRooms[RoomIndex].owner==i)GameRooms[RoomIndex].owner=GameRooms[RoomIndex].players[0];
                                 }
                             }else if(strcmp(users[i].recv[0].c_str(),"SendAnswers")==0 && users[i].InActiveGame == true){
                                     printf("got something\n");
