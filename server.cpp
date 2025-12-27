@@ -331,6 +331,20 @@ int main(int argc, char** argv) {
                                         if(found) GameRooms[RoomIndex].players[j]=GameRooms[RoomIndex].players[j+1];
                                     }  
                                     if(GameRooms[RoomIndex].owner==i)GameRooms[RoomIndex].owner=GameRooms[RoomIndex].players[0];
+                                    printf("left successfuly\n");
+                                }else if(strcmp(users[i].recv[0].c_str(), "DeleteRoom") == 0){
+                                    int RoomIndex=findroom(users[i].CustomRoom);
+                                    if(GameRooms[RoomIndex].owner == i || strcmp(users[i].username.c_str(),"admin")==0){
+                                        for(int j=0;j<GameRooms[RoomIndex].NumberOfPlayers;j++){
+                                            users[GameRooms[RoomIndex].players[j]].room="Start";
+                                            users[GameRooms[RoomIndex].players[j]].CustomRoom="";
+                                        }
+                                        for(int j=RoomIndex;j<NumberOfRooms;j++){
+                                            GameRooms[j]=GameRooms[j+1];
+                                        }
+                                        NumberOfRooms--;
+                                        printf("deleted given room\n");
+                                    }
                                 }
                             }else if(strcmp(users[i].recv[0].c_str(),"SendAnswers")==0 && users[i].InActiveGame == true){
                                     printf("got something\n");
