@@ -13,6 +13,7 @@
 #include <thread>
 #include <vector>
 #include <map>
+#include <chrono>
 
 #define MAX_CLIENTS 99999
 
@@ -26,6 +27,7 @@ int counter = 10;
 class user{
     public: 
     bool active;
+    std::string word[5];
     std::string room;
     std::string CustomRoom;
     std::string username;
@@ -42,6 +44,12 @@ class user{
 
 class gameroom{
     public:
+    std::chrono::_V2::system_clock::time_point StartTime;
+    std::chrono::_V2::system_clock::time_point StopTime;
+    bool EndGame = false;
+    int TimeLimit=60;
+    int StopLimit=10;
+    char GameLetter='A';
     user owner;
     user players[10];
     int NumberOfPlayers=1;
@@ -267,16 +275,45 @@ int main(int argc, char** argv) {
                                         }
                                     }
                                     if(RoomIndex != -1){
+                                        GameRooms[RoomIndex].GameLetter = 'A' + rand()%26;
+                                        printf("%c\n",GameRooms[RoomIndex].GameLetter);
                                         for(int j=1;j<NumberOfUsers;j++){
                                             if(strcmp(users[j].CustomRoom.c_str(),GameRooms[RoomIndex].RoomName.c_str())==0){
                                                 users[j].InActiveGame=true;
                                                 write(fds[j].fd,"Your game started",sizeof("Your game started"));
                                             }
                                         }
+                                        GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
                                         printf("activeted game for room and all players\n");
                                     }
                                 }
-                            }else if(strcmp(users[i].room.c_str(),"CustomRoom")==0 && users[i].InActiveGame == true){
+                            }else if(strcmp(users[i].recv[0].c_str(),"SendAnswers")==0 && users[i].InActiveGame == true){
+                                    printf("got something\n");
+                                    int RoomIndex=-1;
+                                    for(int j=1;j<NumberOfRooms;j++){
+                                        if(strcmp(GameRooms[j].RoomName.c_str(),users[i].CustomRoom.c_str())==0){
+                                            GameRooms[j].ActiveGame = true;
+                                            RoomIndex=j;
+                                        }
+                                    }
+                                    //std::chrono::_V2::system_clock::time_point CurrentTime = std::chrono::system_clock::now();
+                                    if(response.size()<6){
+                                        for(int j=1;j<response.size();j++){
+                                            users[i].word[j-1]=users[i].recv[j];
+                                            if(!GameRooms[RoomIndex].EndGame){
+                                                GameRooms[RoomIndex].EndGame=true;
+                                                GameRooms[RoomIndex].StopTime = std::chrono::system_clock::now();
+                                            }
+                                        }
+                                    }else{
+                                        write(fds[i].fd,"bad answers",sizeof("bad answers"));
+                                    }
+
+                                    printf("user %s gave answers: \n",users[i].username.c_str());
+                                    for(int j=0;j<response.size()-1;j++){
+                                        printf("%s\n",users[i].word[j].c_str());
+                                    }
+                                }else{
                                 responses.insert( {fds[i].fd, response} );
                             }
                         }
