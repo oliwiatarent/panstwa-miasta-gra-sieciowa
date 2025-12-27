@@ -51,7 +51,7 @@ class gameroom{
     int TimeLimit=60000;
     int StopLimit=10000;
     char GameLetter='A';
-    user owner;
+    int owner;
     int players[10];
     int NumberOfPlayers=1;
     std::string RoomName;
@@ -70,6 +70,14 @@ void sendToAll(const char* message, int bytes) {
     for (int i = 1; i < fdCount; i++) {
         write(fds[i].fd, message, bytes);
     }
+}
+int findroom(std::string s){
+    for(int j=1;j<NumberOfRooms;j++){
+        if(strcmp(GameRooms[j].RoomName.c_str(),s.c_str())==0){
+            return j;
+        }
+    }
+    return -1;
 }
 
 std::vector<std::string> responseToVector(char* buf) {
@@ -209,6 +217,7 @@ int main(int argc, char** argv) {
                                         GameRooms[NumberOfRooms].RoomName = users[i].recv[1];
                                         GameRooms[NumberOfRooms].players[GameRooms[NumberOfRooms].NumberOfPlayers]=i;
                                         GameRooms[NumberOfRooms].NumberOfPlayers++;
+                                        GameRooms[NumberOfRooms].owner = i;
                                         NumberOfRooms++;
 
                                     } else {
@@ -287,16 +296,31 @@ int main(int argc, char** argv) {
                                         GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
                                         printf("activeted game for room and all players\n");
                                     }
+                                }else if(strcmp(users[i].recv[0].c_str(), "KickPlayer") == 0){
+                                    int RoomIndex=findroom(users[i].CustomRoom);
+                                    if(GameRooms[RoomIndex].owner == i || strcmp(users[i].username.c_str(),"admin")==0){
+                                        bool found=false;
+                                        for(int j=0;j<GameRooms[RoomIndex].NumberOfPlayers;j++){
+                                            if(strcmp(users[GameRooms[RoomIndex].players[j]].username.c_str(), users[i].recv[1].c_str()) == 0){
+                                                users[GameRooms[RoomIndex].players[j]].room="Start";
+                                                users[GameRooms[RoomIndex].players[j]].CustomRoom="";
+                                                if(GameRooms[RoomIndex].owner == GameRooms[RoomIndex].players[j]) GameRooms[RoomIndex].owner = i;
+                                                found=true;
+                                                GameRooms[RoomIndex].NumberOfPlayers--;
+                                                printf("kicked player %s\n", users[i].recv[1].c_str());
+                                            }
+                                            
+                                            if(found && j+1<GameRooms[RoomIndex].NumberOfPlayers+1){
+                                                GameRooms[RoomIndex].players[j]=GameRooms[RoomIndex].players[j+1];
+                                            }
+                                        }
+                                    }else{
+                                        printf("tried to kick player without perms\n");
+                                    }
                                 }
                             }else if(strcmp(users[i].recv[0].c_str(),"SendAnswers")==0 && users[i].InActiveGame == true){
                                     printf("got something\n");
-                                    int RoomIndex=-1;
-                                    for(int j=1;j<NumberOfRooms;j++){
-                                        if(strcmp(GameRooms[j].RoomName.c_str(),users[i].CustomRoom.c_str())==0){
-                                            GameRooms[j].ActiveGame = true;
-                                            RoomIndex=j;
-                                        }
-                                    }
+                                    int RoomIndex=findroom(users[i].CustomRoom);
                                     //std::chrono::_V2::system_clock::time_point CurrentTime = std::chrono::system_clock::now();
                                     if(response.size()<6){
                                         for(int j=1;j<response.size();j++){
@@ -359,8 +383,6 @@ int main(int argc, char** argv) {
                             if(p20){
                                 users[GameRooms[i].players[j]].points+=20;
                             }
-                        }else{
-                            printf("expected %c got %s\n",GameRooms[i].GameLetter,users[GameRooms[i].players[j]].word[k].c_str());
                         }
                     }
                     printf("player %s got %d points\n", users[GameRooms[i].players[j]].username.c_str(),users[GameRooms[i].players[j]].points);
