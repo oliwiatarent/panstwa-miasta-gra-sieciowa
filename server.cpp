@@ -45,13 +45,16 @@ public:
 class gameroom
 {
 public:
+    bool CountingDownToStart=false;
     bool StartAgain = true;
+    std::chrono::system_clock::time_point ThreePlayersEnteredTime;
     std::chrono::system_clock::time_point StartTime;
     std::chrono::system_clock::time_point StopTime;
     std::chrono::system_clock::time_point ContinueGameTimer;
     bool EndGame = false;
     int TimeLimit = 60000;
     int ContinueGameTimeLimit = 30000;
+    int GameStartLimit = 30000;
     int StopLimit = 10000;
     char GameLetter = 'A';
     int owner;
@@ -391,7 +394,7 @@ int main(int argc, char **argv)
                             }
                         }else if (strcmp(users[i].room.c_str(), "CustomRoom") == 0 && users[i].InActiveGame == false)
                         {
-                            if (users[i].recv[0].compare("AddPlayerToRoom") == 0)
+                            if (strcmp(users[i].recv[0].c_str(),"AddPlayerToRoom") == 0)
                             {
 
                                 if (response.size() == 2)
@@ -400,12 +403,12 @@ int main(int argc, char **argv)
                                     printf("Player added: %s\n", users[i].recv[1].c_str());
                                     write(fds[i].fd, "AddedPlayer\n", sizeof("AddedPlayer\n"));
 
-                                    for (int j = 1; j < NumberOfRooms; j++)
+                                    for (int j = 0; j < NumberOfRooms; j++)
                                     {
                                         if (strcmp(users[i].CustomRoom.c_str(), GameRooms[j].RoomName.c_str()) == 0)
                                         {
                                             printf("Room exists!\n");
-                                            for (int k = 1; k < NumberOfUsers; k++)
+                                            for (int k = 0; k < NumberOfUsers; k++)
                                             {
                                                 printf("%d\n", NumberOfUsers);
                                                 printf("searching for player... %s %s\n", users[i].recv[1].c_str(), users[k].username.c_str());
@@ -531,6 +534,17 @@ int main(int argc, char **argv)
 
         for (int i = 1; i < NumberOfRooms; i++)
         {
+            if(GameRooms[i].NumberOfPlayers >= 3 && GameRooms[i].ActiveGame == false){
+                if(GameRooms[i].CountingDownToStart==false){
+                    GameRooms[i].ThreePlayersEnteredTime = std::chrono::system_clock::now();
+                    GameRooms[i].CountingDownToStart=true;
+                }else if(GameRooms[i].GameStartLimit < (std::chrono::system_clock::now() - GameRooms[i].ThreePlayersEnteredTime).count()/1000000){
+                    GameRooms[i].ContinueGame = true;
+                    GameRooms[i].RoundsLeft=GameRooms[i].RoundsLimit;
+                }
+            }else{
+                GameRooms[i].CountingDownToStart=false;
+            }
             if(GameRooms[i].RoundsLeft>0){
                         GameRooms[i].ContinueGame = true;
                         if(GameRooms[i].ContinueGameTimeLimit < (std::chrono::system_clock::now() - GameRooms[i].ContinueGameTimer).count()/1000000 && GameRooms[i].StartAgain == true && GameRooms[i].ActiveGame == false){
