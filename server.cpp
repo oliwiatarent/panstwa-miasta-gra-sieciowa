@@ -574,6 +574,7 @@ int main(int argc, char **argv)
                 
                 if (GameRooms[i].TimeLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StartTime).count() / 1000000) || (GameRooms[i].EndGame == true && GameRooms[i].StopLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StopTime).count() / 1000000)))
                 {
+                    if(GameRooms[i].NumberOfPlayers < 3) GameRooms[i].RoundsLeft = 0;
                     printf("%d\n",GameRooms[i].NumberOfPlayers);
                     int MaxPoints = 0;
                     std::vector<std::string> winners;
@@ -641,7 +642,7 @@ int main(int argc, char **argv)
                     }
                     int MaxEndPoints=0;
                     winners.clear();
-                    if(GameRooms[i].RoundsLeft == 0){
+                    if(GameRooms[i].RoundsLeft <= 0){
                         for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
                         {
                             if (users[GameRooms[i].players[j]].GamePoints > MaxEndPoints)
