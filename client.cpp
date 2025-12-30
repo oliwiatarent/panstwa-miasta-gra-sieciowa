@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    fds[0].fd = 1;
+    fds[0].fd = 0;
     fds[0].events = POLLIN;
     fds[1].fd = sock;
     fds[1].events = POLLIN | POLLHUP | POLLERR;
@@ -63,31 +63,23 @@ int main(int argc, char *argv[]) {
         if ((fds[1].revents & POLLIN) && !disconnect) {
             int bytes = read(sock, buf, 255);
 
-            if (!logged_in) {
-                if (strcmp(buf, "Username available") == 0) {
-                    logged_in = true;
-                    printf("Zalogowano jako: %s\n", username);
-                } else {
-                    printf("Podana nazwa użytkownika jest już w użyciu. Spróbuj ponownie.\n");
+            if (bytes == 0) {
+                disconnect = true;
+            }
+
+            if (bytes > 0) {
+                if (!logged_in) {
+                    if (strcmp(buf, "Username available") == 0) {
+                        logged_in = true;
+                        printf("Zalogowano jako: %s\n", username);
+                    } else {
+                        printf("Podana nazwa użytkownika jest już w użyciu. Spróbuj ponownie.\n");
+                    }
+
+                    continue;
+
+                    printf("%s\n", buf);
                 }
-
-                continue;
-            }
-
-            printf("%s\n", buf);
-            
-            if (strcmp(buf, "New Room Created") == 0) {
-                // tutaj dodanie do pokoju
-                printf("test new room created\n");
-
-                continue;
-            }
-
-            if (strcmp(buf, "Joining Room") == 0) {
-                // tutaj dodanie do pokoju
-                printf("test joining room\n");
-
-                continue;
             }
         }
 
