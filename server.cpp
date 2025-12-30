@@ -440,6 +440,14 @@ int main(int argc, char **argv)
                                 int RoomIndex = findroom(users[i].CustomRoom);
                                 GameRooms[RoomIndex].ContinueGame = true;
                                 GameRooms[RoomIndex].RoundsLeft=GameRooms[RoomIndex].RoundsLimit;
+                            }else if (strcmp(users[i].recv[0].c_str(), "ChangeRoomName") == 0 && strcmp(users[i].username.c_str(),"admin") == 0)
+                            {
+                                int RoomIndex = findroom(users[i].CustomRoom);
+                                GameRooms[RoomIndex].RoomName = users[i].recv[1];
+                                for(int j=0;j<GameRooms[RoomIndex].NumberOfPlayers;j++){
+                                    users[GameRooms[RoomIndex].players[j]].CustomRoom = users[i].recv[1];
+                                }
+                                printf("changed room name\n");
                             }
                             else if (strcmp(users[i].recv[0].c_str(), "KickPlayer") == 0)
                             {
