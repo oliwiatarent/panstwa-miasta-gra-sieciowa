@@ -45,7 +45,7 @@ public:
 class gameroom
 {
 public:
-    bool CountingDownToStart=false;
+    bool CountingDownToStart = false;
     bool StartAgain = true;
     std::chrono::system_clock::time_point ThreePlayersEnteredTime;
     std::chrono::system_clock::time_point StartTime;
@@ -62,9 +62,9 @@ public:
     int NumberOfPlayers = 0;
     std::string RoomName;
     bool ActiveGame = false;
-    int RoundsLimit=2;
-    int RoundsLeft=0;
-    bool ContinueGame=false;
+    int RoundsLimit = 2;
+    int RoundsLeft = 0;
+    bool ContinueGame = false;
 };
 
 user users[MAX_CLIENTS];
@@ -75,32 +75,40 @@ int NumberOfUsers = 1;
 int NumberOfRooms = 1;
 gameroom GameRooms[MAX_GAMEROOMS];
 
-void sendToAllInRoom(const char *message, int bytes, std::string roomName) {
-    
-    for (int i = 1; i < NumberOfUsers; i++) {
-        user& u = users[i];
+void sendToAllInRoom(const char *message, int bytes, std::string roomName)
+{
 
-        if (strcmp(u.CustomRoom.c_str(), roomName.c_str()) == 0) {
+    for (int i = 1; i < NumberOfUsers; i++)
+    {
+        user &u = users[i];
+
+        if (strcmp(u.CustomRoom.c_str(), roomName.c_str()) == 0)
+        {
             write(fds[i].fd, message, bytes);
         }
     }
 }
 
-void sendRoomInformationInLobby() {
-    for (int i = 1; i < NumberOfUsers; i++) {
+void sendRoomInformationInLobby()
+{
+    for (int i = 1; i < NumberOfUsers; i++)
+    {
 
-        user& u = users[i];
-        if (strcmp(u.room.c_str(), "Start") == 0 && u.username_set) {
+        user &u = users[i];
+        if (strcmp(u.room.c_str(), "Start") == 0 && u.username_set)
+        {
 
-            for (int j = 1; j < NumberOfRooms; j++) {
-                gameroom& g = GameRooms[j];
+            for (int j = 1; j < NumberOfRooms; j++)
+            {
+                gameroom &g = GameRooms[j];
                 std::string msg = g.RoomName + " | " + std::to_string(g.NumberOfPlayers) + " | " + (g.ActiveGame ? "Active" : "Inactive");
                 write(fds[i].fd, msg.c_str(), msg.size());
             }
         }
     }
 }
-void StartGame(int i){
+void StartGame(int i)
+{
     users[i].InActiveGame = true;
     int RoomIndex = -1;
     for (int j = 0; j < NumberOfRooms; j++)
@@ -115,7 +123,8 @@ void StartGame(int i){
     {
         GameRooms[RoomIndex].GameLetter = 'A' + rand() % 26;
         printf("%c\n", GameRooms[RoomIndex].GameLetter);
-        for (int j =1; j < NumberOfUsers; j++)
+
+        for (int j = 1; j < NumberOfUsers; j++)
         {
             if (strcmp(users[j].CustomRoom.c_str(), GameRooms[RoomIndex].RoomName.c_str()) == 0)
             {
@@ -125,23 +134,32 @@ void StartGame(int i){
         }
         GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
         printf("activeted game for room and all players\n");
+
+        std::string msg = "Litera: " + std::string(1, GameRooms[RoomIndex].GameLetter);
+        sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
     }
 }
 
-void sendRoomInformation() {
-    for (int i = 1; i < NumberOfRooms; i++) {
-        gameroom& g  = GameRooms[i];
+void sendRoomInformation()
+{
+    for (int i = 1; i < NumberOfRooms; i++)
+    {
+        gameroom &g = GameRooms[i];
         std::string msg;
 
-        if (!g.ActiveGame) {
+        if (!g.ActiveGame)
+        {
 
-            for (int j = 1; j < NumberOfUsers; j++) {
-                user& u = users[j];
+            for (int j = 1; j < NumberOfUsers; j++)
+            {
+                user &u = users[j];
 
-                if (strcmp(u.CustomRoom.c_str(), g.RoomName.c_str()) == 0) {
+                if (strcmp(u.CustomRoom.c_str(), g.RoomName.c_str()) == 0)
+                {
                     msg += u.username;
 
-                    if (j != NumberOfUsers - 1) msg += " | ";
+                    if (j != NumberOfUsers - 1)
+                        msg += " | ";
                 }
             }
 
@@ -357,8 +375,9 @@ int main(int argc, char **argv)
                                             users[i].CustomRoom = users[i].recv[1];
                                         }
                                     }
-                                    if(!JoinedRoom){
-                                        write(fds[i].fd,"Failed to join a room\n",sizeof("Failed to join a room\n"));
+                                    if (!JoinedRoom)
+                                    {
+                                        write(fds[i].fd, "Failed to join a room\n", sizeof("Failed to join a room\n"));
                                         printf("Failed to join a room\n");
                                     }
                                 }
@@ -367,9 +386,11 @@ int main(int argc, char **argv)
                                     printf("Incorrect command\n");
                                 }
                             }
-                        }else if(strcmp(users[i].room.c_str(), "CustomRoom") == 0 && GameRooms[findroom(users[i].CustomRoom)].ActiveGame == true){
+                        }
+                        else if (strcmp(users[i].room.c_str(), "CustomRoom") == 0 && GameRooms[findroom(users[i].CustomRoom)].ActiveGame == true)
+                        {
                             int RoomIndex = findroom(users[i].CustomRoom);
-                            
+
                             if (strcmp(users[i].recv[0].c_str(), "SendAnswers") == 0 && users[i].InActiveGame == true)
                             {
                                 printf("got something\n");
@@ -398,9 +419,10 @@ int main(int argc, char **argv)
                                     printf("%s\n", users[i].word[j].c_str());
                                 }
                             }
-                        }else if (strcmp(users[i].room.c_str(), "CustomRoom") == 0 && users[i].InActiveGame == false)
+                        }
+                        else if (strcmp(users[i].room.c_str(), "CustomRoom") == 0 && users[i].InActiveGame == false)
                         {
-                            if (strcmp(users[i].recv[0].c_str(),"AddPlayerToRoom") == 0)
+                            if (strcmp(users[i].recv[0].c_str(), "AddPlayerToRoom") == 0)
                             {
 
                                 if (response.size() == 2)
@@ -439,12 +461,14 @@ int main(int argc, char **argv)
                             {
                                 int RoomIndex = findroom(users[i].CustomRoom);
                                 GameRooms[RoomIndex].ContinueGame = true;
-                                GameRooms[RoomIndex].RoundsLeft=GameRooms[RoomIndex].RoundsLimit;
-                            }else if (strcmp(users[i].recv[0].c_str(), "ChangeRoomName") == 0 && strcmp(users[i].username.c_str(),"admin") == 0)
+                                GameRooms[RoomIndex].RoundsLeft = GameRooms[RoomIndex].RoundsLimit;
+                            }
+                            else if (strcmp(users[i].recv[0].c_str(), "ChangeRoomName") == 0 && strcmp(users[i].username.c_str(), "admin") == 0)
                             {
                                 int RoomIndex = findroom(users[i].CustomRoom);
                                 GameRooms[RoomIndex].RoomName = users[i].recv[1];
-                                for(int j=0;j<GameRooms[RoomIndex].NumberOfPlayers;j++){
+                                for (int j = 0; j < GameRooms[RoomIndex].NumberOfPlayers; j++)
+                                {
                                     users[GameRooms[RoomIndex].players[j]].CustomRoom = users[i].recv[1];
                                 }
                                 printf("changed room name\n");
@@ -519,7 +543,7 @@ int main(int argc, char **argv)
                                 }
                             }
                         }
-                        
+
                         else
                         {
                             responses.insert({fds[i].fd, response});
@@ -548,34 +572,44 @@ int main(int argc, char **argv)
 
         for (int i = 1; i < NumberOfRooms; i++)
         {
-            if(GameRooms[i].NumberOfPlayers >= 3 && GameRooms[i].ActiveGame == false){
-                if(GameRooms[i].CountingDownToStart==false){
+            if (GameRooms[i].NumberOfPlayers >= 3 && GameRooms[i].ActiveGame == false)
+            {
+                if (GameRooms[i].CountingDownToStart == false)
+                {
                     GameRooms[i].ThreePlayersEnteredTime = std::chrono::system_clock::now();
-                    GameRooms[i].CountingDownToStart=true;
-                }else if(GameRooms[i].GameStartLimit < (std::chrono::system_clock::now() - GameRooms[i].ThreePlayersEnteredTime).count()/1000000){
-                    GameRooms[i].ContinueGame = true;
-                    GameRooms[i].RoundsLeft=GameRooms[i].RoundsLimit;
+                    GameRooms[i].CountingDownToStart = true;
                 }
-            }else{
-                GameRooms[i].CountingDownToStart=false;
+                else if (GameRooms[i].GameStartLimit < (std::chrono::system_clock::now() - GameRooms[i].ThreePlayersEnteredTime).count() / 1000000)
+                {
+                    GameRooms[i].ContinueGame = true;
+                    GameRooms[i].RoundsLeft = GameRooms[i].RoundsLimit;
+                }
             }
-            if(GameRooms[i].RoundsLeft>0){
-                        GameRooms[i].ContinueGame = true;
-                        if(GameRooms[i].ContinueGameTimeLimit < (std::chrono::system_clock::now() - GameRooms[i].ContinueGameTimer).count()/1000000 && GameRooms[i].StartAgain == true && GameRooms[i].ActiveGame == false){
-                            StartGame(GameRooms[i].owner);
-                            GameRooms[i].RoundsLeft--;
-                            
-                        }
-                    }else{
-                        GameRooms[i].ContinueGame = false;
-                    }
+            else
+            {
+                GameRooms[i].CountingDownToStart = false;
+            }
+            if (GameRooms[i].RoundsLeft > 0)
+            {
+                GameRooms[i].ContinueGame = true;
+                if (GameRooms[i].ContinueGameTimeLimit < (std::chrono::system_clock::now() - GameRooms[i].ContinueGameTimer).count() / 1000000 && GameRooms[i].StartAgain == true && GameRooms[i].ActiveGame == false)
+                {
+                    StartGame(GameRooms[i].owner);
+                    GameRooms[i].RoundsLeft--;
+                }
+            }
+            else
+            {
+                GameRooms[i].ContinueGame = false;
+            }
             if (GameRooms[i].ActiveGame)
             {
-                
+
                 if (GameRooms[i].TimeLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StartTime).count() / 1000000) || (GameRooms[i].EndGame == true && GameRooms[i].StopLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StopTime).count() / 1000000)))
                 {
-                    if(GameRooms[i].NumberOfPlayers < 3) GameRooms[i].RoundsLeft = 0;
-                    printf("%d\n",GameRooms[i].NumberOfPlayers);
+                    if (GameRooms[i].NumberOfPlayers < 3)
+                        GameRooms[i].RoundsLeft = 0;
+                    printf("%d\n", GameRooms[i].NumberOfPlayers);
                     int MaxPoints = 0;
                     std::vector<std::string> winners;
                     for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
@@ -605,6 +639,10 @@ int main(int argc, char **argv)
                             }
                         }
                         printf("player %s got %d points\n", users[GameRooms[i].players[j]].username.c_str(), users[GameRooms[i].players[j]].points);
+
+                        std::string msg = "Points: " + users[GameRooms[i].players[j]].username + " " + std::to_string(users[GameRooms[i].players[j]].points) + "\n";
+                        sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
+
                         if (users[GameRooms[i].players[j]].points > MaxPoints)
                         {
                             MaxPoints = users[GameRooms[i].players[j]].points;
@@ -616,18 +654,21 @@ int main(int argc, char **argv)
                             winners.push_back(users[GameRooms[i].players[j]].username);
                         }
                     }
-                    
+
                     if (winners.size() > 1)
                     {
                         printf("winners of round:\n");
+                        sendToAllInRoom("winners of round:", 19, GameRooms[i].RoomName);
                     }
                     else
                     {
                         printf("winner of round:\n");
+                        sendToAllInRoom("winner of round:", 18, GameRooms[i].RoomName);
                     }
                     for (int k = 0; k < winners.size(); k++)
                     {
                         printf("%s\n", winners[k].c_str());
+                        sendToAllInRoom(winners[k].c_str(), winners[k].size(), GameRooms[i].RoomName);
                     }
                     GameRooms[i].ActiveGame = false;
                     GameRooms[i].EndGame = false;
@@ -640,9 +681,10 @@ int main(int argc, char **argv)
                             users[GameRooms[i].players[j]].word[k] = "";
                         }
                     }
-                    int MaxEndPoints=0;
+                    int MaxEndPoints = 0;
                     winners.clear();
-                    if(GameRooms[i].RoundsLeft <= 0){
+                    if (GameRooms[i].RoundsLeft <= 0)
+                    {
                         for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
                         {
                             if (users[GameRooms[i].players[j]].GamePoints > MaxEndPoints)
@@ -654,31 +696,35 @@ int main(int argc, char **argv)
                             else if (users[GameRooms[i].players[j]].points == MaxEndPoints)
                             {
                                 winners.push_back(users[GameRooms[i].players[j]].username);
-                            } 
+                            }
                         }
                         if (winners.size() > 1)
                         {
                             printf("winners:\n");
+                            sendToAllInRoom("winners:", 8, GameRooms[i].RoomName);
                         }
                         else
                         {
                             printf("winner:\n");
+                            sendToAllInRoom("winner:", 7, GameRooms[i].RoomName);
                         }
                         for (int k = 0; k < winners.size(); k++)
                         {
                             printf("%s\n", winners[k].c_str());
+                            sendToAllInRoom(winners[k].c_str(), winners[k].size(), GameRooms[i].RoomName);
                         }
                         for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
                         {
                             users[GameRooms[i].players[j]].room = "Start";
                             users[GameRooms[i].players[j]].CustomRoom = "";
                         }
-                        GameRooms[i].NumberOfPlayers=0;
-                    }else{
+                        GameRooms[i].NumberOfPlayers = 0;
+                    }
+                    else
+                    {
                         GameRooms[i].StartAgain = true;
                     }
-                    
-                    
+
                     GameRooms[i].ContinueGameTimer = std::chrono::system_clock::now();
                 }
             }

@@ -77,10 +77,11 @@ int main(int argc, char *argv[]) {
                     }
 
                     continue;
-
-                    printf("%s\n", buf);
                 }
             }
+            
+
+            printf("%s\n", buf);
         }
 
         if (disconnect) {
