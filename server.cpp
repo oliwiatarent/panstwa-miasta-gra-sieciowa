@@ -23,6 +23,7 @@ std::map<int, std::vector<std::string>> responses;
 class user
 {
 public:
+    int TimePoints = 0;
     int points = 0;
     int GamePoints = 0;
     bool active;
@@ -382,6 +383,7 @@ int main(int argc, char **argv)
                                         users[i].word[j - 1] = users[i].recv[j];
                                         if (!GameRooms[RoomIndex].EndGame)
                                         {
+                                            users[i].TimePoints++;
                                             GameRooms[RoomIndex].EndGame = true;
                                             GameRooms[RoomIndex].StopTime = std::chrono::system_clock::now();
                                         }
@@ -645,16 +647,18 @@ int main(int argc, char **argv)
                     if(GameRooms[i].RoundsLeft <= 0){
                         for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
                         {
-                            if (users[GameRooms[i].players[j]].GamePoints > MaxEndPoints)
+                            if (users[GameRooms[i].players[j]].GamePoints + users[GameRooms[i].players[j]].TimePoints > MaxEndPoints)
                             {
-                                MaxEndPoints = users[GameRooms[i].players[j]].GamePoints;
+                                MaxEndPoints = users[GameRooms[i].players[j]].GamePoints + users[GameRooms[i].players[j]].TimePoints;
                                 winners.clear();
                                 winners.push_back(users[GameRooms[i].players[j]].username);
                             }
                             else if (users[GameRooms[i].players[j]].points == MaxEndPoints)
                             {
                                 winners.push_back(users[GameRooms[i].players[j]].username);
-                            } 
+                            }
+                            users[GameRooms[i].players[j]].GamePoints = 0;
+                            users[GameRooms[i].players[j]].TimePoints = 0; 
                         }
                         if (winners.size() > 1)
                         {
@@ -664,6 +668,7 @@ int main(int argc, char **argv)
                         {
                             printf("winner:\n");
                         }
+                        printf("They got %d points\n",MaxEndPoints);
                         for (int k = 0; k < winners.size(); k++)
                         {
                             printf("%s\n", winners[k].c_str());
