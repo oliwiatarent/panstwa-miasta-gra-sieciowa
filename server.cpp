@@ -342,11 +342,13 @@ int main(int argc, char **argv)
                                 {
 
                                     printf("Joining room\n");
+                                    bool JoinedRoom = false;
 
                                     for (int j = 1; j < NumberOfRooms; j++)
                                     {
-                                        if (strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0)
+                                        if (GameRooms[j].ActiveGame == false && strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0)
                                         {
+                                            JoinedRoom = true;
                                             write(fds[i].fd, "Joining Room", sizeof("Joining Room"));
                                             GameRooms[j].players[GameRooms[j].NumberOfPlayers] = i;
                                             GameRooms[j].NumberOfPlayers++;
@@ -354,6 +356,10 @@ int main(int argc, char **argv)
                                             users[i].room = "CustomRoom";
                                             users[i].CustomRoom = users[i].recv[1];
                                         }
+                                    }
+                                    if(!JoinedRoom){
+                                        write(fds[i].fd,"Failed to join a room\n",sizeof("Failed to join a room\n"));
+                                        printf("Failed to join a room\n");
                                     }
                                 }
                                 else
