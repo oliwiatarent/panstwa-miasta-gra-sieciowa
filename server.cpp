@@ -668,9 +668,17 @@ int main(int argc, char **argv)
                         {
                             printf("%s\n", winners[k].c_str());
                         }
+                        for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
+                        {
+                            users[GameRooms[i].players[j]].room = "Start";
+                            users[GameRooms[i].players[j]].CustomRoom = "";
+                        }
+                        GameRooms[i].NumberOfPlayers=0;
+                    }else{
+                        GameRooms[i].StartAgain = true;
                     }
                     
-                    GameRooms[i].StartAgain = true;
+                    
                     GameRooms[i].ContinueGameTimer = std::chrono::system_clock::now();
                 }
             }
