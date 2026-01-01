@@ -220,55 +220,13 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         printf("Niepoprawne wykonanie: %s <numer_portu>\n", argv[0]);
-        return 1;
-    }
-
-    struct ifaddrs *ifaddr;
-
-    if (getifaddrs(&ifaddr) == -1) {
-        perror("getifaddrs failed");
-        return 1;
-    }
-
-    printf("Dostepne adresy IP:\n");
-    for (struct ifaddrs *ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr) continue;
-
-        if (ifa->ifa_addr->sa_family == AF_INET) {
-            sockaddr_in *addr = (sockaddr_in *)ifa->ifa_addr;
-            printf("%s\n", inet_ntoa(addr->sin_addr));
-        }
-    }
-
-    char ip[40];
-    int bytes = read(0, ip, 40);
-    if (bytes == -1) {
-        perror("Nadawanie adresu IP nie powiodlo sie");
-        return 1;
-    }
-    ip[bytes - 1] = '\0';
-
-    bool address_found = false;
-    for (struct ifaddrs *ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr) continue;
-
-        if (ifa->ifa_addr->sa_family == AF_INET) {
-            sockaddr_in *addr = (sockaddr_in *)ifa->ifa_addr;
-            if (strcmp(inet_ntoa(addr->sin_addr), ip) == 0) {
-                address_found = true;
-            }
-        }
-    }
-
-    if (!address_found) {
-        printf("Podano nie prawidlowy adres IP\n");
-        return 1;
+        return 1;   
     }
 
     int servSock = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in serverAddr = {};
-    serverAddr.sin_addr.s_addr = inet_addr(ip);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(atoi(argv[1]));
 
@@ -281,9 +239,7 @@ int main(int argc, char **argv)
         close(servSock);
         return 1;
     }
-
-    printf("Uruchomiono serwer na adresie %s:%s\n", ip, argv[1]);
-
+    
     listen(servSock, SOMAXCONN);
 
     fds[0].fd = servSock;
