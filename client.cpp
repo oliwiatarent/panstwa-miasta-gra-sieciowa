@@ -1,15 +1,28 @@
-#include <QApplication>
-#include <QPushButton>
-#include <QMessageBox>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <string>
+#include <cstring>
 
-void onButtonClicked(char* ip, int port) {
+bool logged_in = false;
+std::string current_room = "Start";
+char username[255];
+
+pollfd fds[2];
+
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Niepoprawne wykonanie: %s <numer_portu>\n", argv[0]);
+    }
+
+    char* ip = argv[1];
+    int port = atoi(argv[2]);
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in serverAddr = {};
@@ -20,29 +33,67 @@ void onButtonClicked(char* ip, int port) {
     if (connect(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1) {
         perror("Connect failed");
         close(sock);
-        return;
+        return -1;
     }
 
-    char buf[255];
+    fds[0].fd = 0;
+    fds[0].events = POLLIN;
+    fds[1].fd = sock;
+    fds[1].events = POLLIN | POLLHUP | POLLERR;
 
-    write(sock, "Request\n", 8);
-    int bytes = read(sock, buf, 255);
+    while (true) {
+        int ready = poll(fds, 2, -1);
+        char buf[255]{};
+        bool disconnect = false;
+
+        if (fds[1].revents & (POLLHUP | POLLERR)) {
+            disconnect = true;
+        }
+
+        if ((fds[0].revents & POLLIN) && !disconnect) {
+            int bytes = read(1, buf, 255);
+            write(sock, buf, bytes);
+
+            if (!logged_in) {
+                strcpy(username, buf);
+                username[strcspn(username, "\n")] = '\0';
+            }
+        }
+
+        if ((fds[1].revents & POLLIN) && !disconnect) {
+            int bytes = read(sock, buf, 255);
+
+            if (bytes == 0) {
+                disconnect = true;
+            }
+
+            if (bytes > 0) {
+                if (!logged_in) {
+                    if (strcmp(buf, "Username available") == 0) {
+                        logged_in = true;
+                        printf("Zalogowano jako: %s\n", username);
+                    } else {
+                        printf("Podana nazwa użytkownika jest już w użyciu. Spróbuj ponownie.\n");
+                    }
+
+                    continue;
+                }
+            }
+            
+
+            printf("%s\n", buf);
+        }
+
+        if (disconnect) {
+            printf("Nastąpiło rozłączenie z serwerem\n");
+
+            shutdown(sock, SHUT_RDWR);
+            close(sock);
+
+            exit(0);
+        }
+    }
 
     shutdown(sock, SHUT_RDWR);
     close(sock);
-}
-
-int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
-
-    char* ip = argv[1];
-    int port = atoi(argv[2]);
-
-    QPushButton button("Kliknij mnie!");
-    button.resize(200, 50);
-
-    QObject::connect(&button, &QPushButton::clicked, [=]() { onButtonClicked(ip, port); });
-
-    button.show();
-    return app.exec();
 }

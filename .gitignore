@@ -30,6 +30,8 @@ ui_*.h
 Makefile*
 *build-*
 build/
+CMakeFiles/
+.vscode/
 *.qm
 *.prl
 
