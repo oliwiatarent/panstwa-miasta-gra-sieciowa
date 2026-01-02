@@ -220,7 +220,7 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         printf("Niepoprawne wykonanie: %s <numer_portu>\n", argv[0]);
-        return 1;   
+        return 1;
     }
 
     int servSock = socket(AF_INET, SOCK_STREAM, 0);
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
         close(servSock);
         return 1;
     }
-    
+
     listen(servSock, SOMAXCONN);
 
     fds[0].fd = servSock;
@@ -473,8 +473,17 @@ int main(int argc, char **argv)
                             else if (strcmp(users[i].recv[0].c_str(), "StartGame") == 0)
                             {
                                 int RoomIndex = findroom(users[i].CustomRoom);
-                                GameRooms[RoomIndex].ContinueGame = true;
-                                GameRooms[RoomIndex].RoundsLeft = GameRooms[RoomIndex].RoundsLimit;
+
+                                if (!GameRooms[RoomIndex].ActiveGame) {
+                                    // resetuje licznik, jesli konczy sie gra
+                                    if (GameRooms[RoomIndex].RoundsLeft <= 0)
+                                        GameRooms[RoomIndex].RoundsLeft = GameRooms[RoomIndex].RoundsLimit;
+
+                                    GameRooms[RoomIndex].RoundsLeft--;
+                                    StartGame(i);
+                                    GameRooms[RoomIndex].ContinueGameTimer = std::chrono::system_clock::now();
+                                    GameRooms[RoomIndex].ContinueGame = true;
+                                }
                             }
                             else if (strcmp(users[i].recv[0].c_str(), "ChangeRoomName") == 0 && strcmp(users[i].username.c_str(), "admin") == 0)
                             {
@@ -711,7 +720,7 @@ int main(int argc, char **argv)
                                 winners.push_back(users[GameRooms[i].players[j]].username);
                             }
                             users[GameRooms[i].players[j]].GamePoints = 0;
-                            users[GameRooms[i].players[j]].TimePoints = 0; 
+                            users[GameRooms[i].players[j]].TimePoints = 0;
                         }
                         if (winners.size() > 1)
                         {
