@@ -246,7 +246,7 @@ private slots:
         inputCmd->setPlaceholderText("Nazwa pokoju...");
         btnCreate = new QPushButton("Stworz pokoj!");
         btnJoin = new QPushButton("Dolacz!");
-        QPushButton *btnStart = new QPushButton("Start Gry! [lider]");
+        QPushButton *btnStart = new QPushButton("Start Rundy");
 
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
         connect(btnJoin, &QPushButton::clicked, this, &MainWindow::onJoinRoom);
