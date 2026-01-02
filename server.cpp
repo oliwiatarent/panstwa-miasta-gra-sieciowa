@@ -404,7 +404,7 @@ int main(int argc, char **argv)
                                 printf("got something\n");
                                 int RoomIndex = findroom(users[i].CustomRoom);
                                 // std::chrono::_V2::system_clock::time_point CurrentTime = std::chrono::system_clock::now();
-                                if (response.size() < 6)
+                                if (response.size() <= 6)
                                 {
                                     for (int j = 1; j < response.size(); j++)
                                     {
