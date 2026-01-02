@@ -5,6 +5,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_executable(client client.cpp)
-
 add_executable(server server.cpp)
+
+find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
+add_executable(client_gui client_gui.cpp)
+target_link_libraries(client_gui PRIVATE Qt6::Widgets Qt6::Network)
