@@ -630,7 +630,7 @@ int main(int argc, char **argv)
                         users[GameRooms[i].players[j]].InActiveGame = false;
                         for (int k = 0; k < 5; k++)
                         {
-                            if (users[GameRooms[i].players[j]].word[k][0] == GameRooms[i].GameLetter)
+                            if (users[GameRooms[i].players[j]].word[k][0] == GameRooms[i].GameLetter || users[GameRooms[i].players[j]].word[k][0] == GameRooms[i].GameLetter + 32)
                             {
                                 bool p20 = true;
                                 for (int l = 0; l < GameRooms[i].NumberOfPlayers; l++)
