@@ -27,10 +27,14 @@
 #include <QGroupBox>
 
 
-// dla Qt dla rzeczy sieciowych
 class NetworkWorker : public QObject {
     Q_OBJECT
 
+signals:
+    void logMessage(QString msg);
+    void connectedToServer();
+    void loginSuccess();
+    void loginFailed(QString msg);
 public:
     int sock = -1;
     std::atomic<bool> running;
@@ -44,7 +48,7 @@ public:
         if (sock != -1 && running) {
             // dodaje \n dla konca danych
             if (cmd.back() != '\n') cmd += "\n";
-            ::write(sock, cmd.c_str(), cmd.size()); //do zmiany?
+            write(sock, cmd.c_str(), cmd.size()); //do zmiany?
         }
     }
 
@@ -61,7 +65,7 @@ public:
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_port = htons(port);
 
-        if (::connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        if (::connect(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1) {
             emit logMessage("[ERROR] Nie mo¿na siê po³¹czyæ.");
             close(sock);
             return;
@@ -83,17 +87,21 @@ public:
 
                 if (fds[0].revents & POLLIN) {
                     char buf[256]{};
-                    int bytes = ::read(sock, buf, 255);
+                    int bytes = read(sock, buf, 255);
 
                     if (bytes > 0) {
                         buf[bytes] = '\0';
                         QString msg = QString::fromUtf8(buf).trimmed();
                         emit logMessage(msg);
 
-                        // ekran logowania -> ekran g³ówny
+                        //logowanie
                         if (!logged_in && msg.contains("Username available")) {
                             logged_in = true;
                             emit loginSuccess();
+                        }
+                        else if (msg.contains("Username already in use")) {
+                            emit loginFailed("[WARN] Nazwa u¿ytkownika jest zajêta!");
+                            running = false;
                         }
                     }
                 }
@@ -101,55 +109,57 @@ public:
         }
         close(sock);
     }
-
-signals:
-    void logMessage(QString msg);
-    void connectedToServer();
-    void loginSuccess();
 };
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
-        NetworkWorker* worker;
+    NetworkWorker* worker;
     std::thread netThread;
 
     // UI
-    QStackedWidget* stackedWidget;
-    QTextEdit* consoleLog;
+    QStackedWidget *stackedWidget;
+    QTextEdit *consoleLog;
 
     // Ekran 1 - login
-    QLineEdit* inputIp, * inputPort, * inputNick;
-    QPushButton* btnConnect;
+    QLineEdit *inputIp, *inputPort, *inputNick;
+    QPushButton *btnConnect;
 
     // Ekran 2 - lobby/gra
-    QLineEdit* inputCmd;
-    QPushButton* btnCreate, * btnJoin, * btnSendRaw;
-    QLineEdit* ans1, * ans2, * ans3, * ans4, * ans5;
-    QPushButton* btnSendAnswers;
+    QLineEdit *inputCmd;
+    QPushButton *btnCreate, *btnJoin, *btnSendRaw;
+    QLineEdit *ans1, *ans2, *ans3, *ans4, *ans5;
+    QPushButton *btnSendAnswers;
 
 public:
-    MainWindow(QWidget* parent = nullptr) : QMainWindow(parent) {
+    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
         worker = new NetworkWorker();
         setupUI();
         qRegisterMetaType<QString>("QString");
 
         connect(worker, &NetworkWorker::logMessage, this, &MainWindow::appendLog, Qt::QueuedConnection);
 
-        connect(worker, &NetworkWorker::connectedToServer, this, [this]() {
+        connect(worker, &NetworkWorker::connectedToServer, this, [this](){
             appendLog("[INFO] Po³¹czono! Wysy³am nick...");
             worker->sendCommand(inputNick->text().toStdString());
-            });
+        });
 
-        connect(worker, &NetworkWorker::loginSuccess, this, [this]() {
+        connect(worker, &NetworkWorker::loginSuccess, this, [this](){
             appendLog("[INFO] Zalogowano pomyœlnie!");
             stackedWidget->setCurrentIndex(1); // zmiana ekranu
-            });
+        });
+
+        connect(worker, &NetworkWorker::loginFailed, this, [this](QString msg){
+            btnConnect->setEnabled(true);
+            if (netThread.joinable())
+                netThread.join();
+        });
     }
 
     ~MainWindow() {
         worker->running = false;
-        if (netThread.joinable()) netThread.join();
+        if (netThread.joinable())
+            netThread.join();
         delete worker;
     }
 
@@ -159,13 +169,17 @@ private slots:
     }
 
     void onConnect() {
+        btnConnect->setEnabled(false);
+        if (netThread.joinable())
+            netThread.join();
+        worker->running = true;
+
         std::string ip = inputIp->text().toStdString();
         int port = inputPort->text().toInt();
 
-        netThread = std::thread([this, ip, port]() {
+        netThread = std::thread([this, ip, port](){
             worker->runNetworkLoop(ip, port);
-            });
-        btnConnect->setEnabled(false);
+        });
     }
 
     void onCreateRoom() {
@@ -186,29 +200,29 @@ private slots:
         // przetworzenie tekstu
         auto sanitize = [](QString text) {
             text = text.trimmed();
-            if (text.isEmpty()) return QString("-");
+            if(text.isEmpty()) return QString("-"); // ¿eby nie odsy³a³ pustej wartoœci
             return text.replace(" ", "_"); // dla 2+ s³ów
-            };
+        };
 
         QString msg = "SendAnswers " +
-            sanitize(ans1->text()) + " " + sanitize(ans2->text()) + " " +
-            sanitize(ans3->text()) + " " + sanitize(ans4->text()) + " " +
-            sanitize(ans5->text());
+                      sanitize(ans1->text()) + " " + sanitize(ans2->text()) + " " +
+                      sanitize(ans3->text()) + " " + sanitize(ans4->text()) + " " +
+                      sanitize(ans5->text());
 
         worker->sendCommand(msg.toStdString());
         appendLog("[INFO] Wys³ano odpowiedzi.");
     }
 
     void setupUI() {
-        QWidget* central = new QWidget;
+        QWidget *central = new QWidget;
         setCentralWidget(central);
-        QVBoxLayout* mainLayout = new QVBoxLayout(central);
+        QVBoxLayout *mainLayout = new QVBoxLayout(central);
 
         stackedWidget = new QStackedWidget;
 
         // login
-        QWidget* pageLogin = new QWidget;
-        QVBoxLayout* layoutLogin = new QVBoxLayout(pageLogin);
+        QWidget *pageLogin = new QWidget;
+        QVBoxLayout *layoutLogin = new QVBoxLayout(pageLogin);
         inputIp = new QLineEdit("127.0.0.1");
         inputPort = new QLineEdit("1234");
         inputNick = new QLineEdit("gracz1");
@@ -223,16 +237,16 @@ private slots:
         layoutLogin->addStretch();
 
         // lobby
-        QWidget* pageGame = new QWidget;
-        QVBoxLayout* layoutGame = new QVBoxLayout(pageGame);
+        QWidget *pageGame = new QWidget;
+        QVBoxLayout *layoutGame = new QVBoxLayout(pageGame);
 
         // pokoje
-        QHBoxLayout* roomLayout = new QHBoxLayout;
+        QHBoxLayout *roomLayout = new QHBoxLayout;
         inputCmd = new QLineEdit();
         inputCmd->setPlaceholderText("Nazwa pokoju...");
         btnCreate = new QPushButton("Stwórz pokój!");
         btnJoin = new QPushButton("Do³¹cz!");
-        QPushButton* btnStart = new QPushButton("Start Gry! [lider]");
+        QPushButton *btnStart = new QPushButton("Start Gry! [lider]");
 
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
         connect(btnJoin, &QPushButton::clicked, this, &MainWindow::onJoinRoom);
@@ -243,8 +257,8 @@ private slots:
         roomLayout->addWidget(btnJoin);
 
         // odpowiedzi
-        QGroupBox* grpAns = new QGroupBox("Odpowiedzi:");
-        QVBoxLayout* boxAns = new QVBoxLayout(grpAns);
+        QGroupBox *grpAns = new QGroupBox("Odpowiedzi:");
+        QVBoxLayout *boxAns = new QVBoxLayout(grpAns);
         ans1 = new QLineEdit(); ans1->setPlaceholderText("Pañstwo");
         ans2 = new QLineEdit(); ans2->setPlaceholderText("Miasto");
         ans3 = new QLineEdit(); ans3->setPlaceholderText("Rzeka");
@@ -277,7 +291,7 @@ private slots:
 
 #include "client_gui.moc"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     MainWindow w;
     w.setWindowTitle("Pañstwa-Miasta");
