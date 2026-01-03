@@ -102,11 +102,15 @@ void sendRoomInformationInLobby()
         user &u = users[i];
         if (strcmp(u.room.c_str(), "Start") == 0 && u.username_set)
         {
-
+            // header dla klientów
+            std::string header = "ROOMLIST_START\n";
+            write(fds[i].fd, header.c_str(), header.size());
             for (int j = 1; j < NumberOfRooms; j++)
             {
                 gameroom &g = GameRooms[j];
-                std::string msg = g.RoomName + " | " + std::to_string(g.NumberOfPlayers) + " | " + (g.ActiveGame ? "Active" : "Inactive");
+                // dla gui: ROOM:Nazwa:LGraczy:Status
+                std::string msg = "ROOM:" + g.RoomName + ":" + std::to_string(g.NumberOfPlayers) + ":" + (g.ActiveGame ? "Active" : "Inactive") + "\n";
+                //std::string msg = g.RoomName + " | " + std::to_string(g.NumberOfPlayers) + " | " + (g.ActiveGame ? "Active" : "Inactive");
                 write(fds[i].fd, msg.c_str(), msg.size());
             }
         }
@@ -557,6 +561,8 @@ int main(int argc, char **argv)
                                     if (GameRooms[RoomIndex].owner == i)
                                         GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
                                     printf("left successfuly\n");
+                                    std::string msg = "left successfuly\n";
+                                    write(fds[i].fd, msg.c_str(), msg.size());
                                 }
                                 else if (strcmp(users[i].recv[0].c_str(), "DeleteRoom") == 0)
                                 {
@@ -675,7 +681,7 @@ int main(int argc, char **argv)
                         }
                         printf("player %s got %d points\n", users[GameRooms[i].players[j]].username.c_str(), users[GameRooms[i].players[j]].points);
 
-                        std::string msg = "Points: " + users[GameRooms[i].players[j]].username + " " + std::to_string(users[GameRooms[i].players[j]].points) + "\n";
+                        std::string msg = "Points:" + users[GameRooms[i].players[j]].username + ":" + std::to_string(users[GameRooms[i].players[j]].points) + "\n";
                         sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
 
                         if (users[GameRooms[i].players[j]].points > MaxPoints)

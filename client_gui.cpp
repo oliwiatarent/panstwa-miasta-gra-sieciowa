@@ -25,6 +25,10 @@
 #include <QThread>
 #include <QMetaType>
 #include <QGroupBox>
+#include <QListWidget>
+#include <QTableWidget>
+#include <QSpinBox>
+#include <QHeaderView>
 
 
 class NetworkWorker : public QObject {
@@ -35,8 +39,14 @@ signals:
     void connectedToServer();
     void loginSuccess();
     void loginFailed(QString msg);
-    void roundEndingSoon(int seconds);
+    void roundEndingSoon();
     void roundFinished();
+    void roomListItem(QString name, QString players, QString status);
+    void roomListCleared();
+    void scoreUpdate(QString user, int points);
+    void roomJoin();
+    void roomLeft();
+    void gameStarted(QString letter);
 
 public:
     int sock = -1;
@@ -94,27 +104,62 @@ public:
 
                     if (bytes > 0) {
                         buf[bytes] = '\0';
-                        QString msg = QString::fromUtf8(buf).trimmed();
-                        emit logMessage(msg);
+                        QString buff = QString::fromUtf8(buf);
+                        QStringList lines = buff.split('\n', Qt::SkipEmptyParts);
+                        //emit logMessage(msg);
 
-                        //sygna³ do odliczania
-                        if (msg.contains("RoundEnding")) {
-                            QStringList parts = msg.split(" ");
-                            emit roundEndingSoon(parts[1].toInt());
-                        }
+                        for(const QString &line : lines) {
+                            QString msg = line.trimmed();
 
-                        //sygna³ koñca rundy
-                        if (msg.contains("winners of round"))
-                            emit roundFinished();
+                            // lista pokoi
+                            if (msg == "ROOMLIST_START") {
+                                emit roomListCleared();
+                            }
+                            else if (msg.contains("ROOM:")) {
+                                // ROOM:Nazwa:LGraczy:Status
+                                QStringList parts = msg.split(":");
+                                emit roomListItem(parts[1], parts[2], parts[3]);
+                            }
+                            // tabela
+                            else if (msg.contains("Points:")) {
+                                // Points:User:10
+                                QStringList parts = msg.split(":");
+                                emit scoreUpdate(parts[1], parts[2].toInt());
+                            }
+                            // wchodzenie/wychodzenie
+                            else if (msg.contains("Joining Room") || msg.contains("New Room Created")) {
+                                emit roomJoin();
+                            }
+                            else if (msg.contains("left successfuly")) {
+                                emit roomLeft();
+                            }
+                            else if (msg.contains("Litera:")) {
+                                // Litera: X
+                                QString letter = msg.section(":", 1).trimmed();
+                                emit gameStarted(letter);
+                            }
+                            else {
+                                emit logMessage(msg);
 
-                        //logowanie
-                        if (!logged_in && msg.contains("Username available")) {
-                            logged_in = true;
-                            emit loginSuccess();
-                        }
-                        else if (msg.contains("Username already in use")) {
-                            emit loginFailed("[WARN] Nazwa uzytkownika jest zajeta!");
-                            running = false;
+                                //sygna³ do odliczania
+                                if (msg.contains("RoundEnding")) {
+                                    emit roundEndingSoon();
+                                }
+
+                                //sygna³ koñca rundy
+                                if (msg.contains("winner"))
+                                    emit roundFinished();
+
+                                //logowanie
+                                if (!logged_in && msg.contains("Username available")) {
+                                    logged_in = true;
+                                    emit loginSuccess();
+                                }
+                                else if (msg.contains("Username already in use")) {
+                                    emit loginFailed("[WARN] Nazwa uzytkownika jest zajeta!");
+                                    running = false;
+                                }
+                            }
                         }
                     }
                 }
@@ -138,12 +183,22 @@ class MainWindow : public QMainWindow {
     QLineEdit *inputIp, *inputPort, *inputNick;
     QPushButton *btnConnect;
 
-    // Ekran 2 - lobby/gra
-    QLineEdit *inputCmd;
-    QPushButton *btnCreate, *btnJoin, *btnSendRaw;
+    // Ekran 2 - lobby
+    QListWidget *listRooms;
+    QLineEdit *inputNewRoomName;
+    QSpinBox *cntRounds;
+    QPushButton *btnCreate, *btnJoin;
+    QString lastSelectedRoom = "";
+
+    // Ekran 3 - gra
+    QLabel *currRoom;
+    QTableWidget *tableScores;
     QLineEdit *ans1, *ans2, *ans3, *ans4, *ans5;
-    QPushButton *btnSendAnswers;
+    QPushButton *btnStart, *btnSendAnswers, *btnLeave;
     QLabel *notif;
+    QString currRoomName;
+    QLabel *letter;
+
 
 public:
     MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
@@ -164,12 +219,56 @@ public:
         });
 
         connect(worker, &NetworkWorker::loginFailed, this, [this](QString msg){
+            appendLog("[INFO] Logowanie nie powiodlo sie!");
             btnConnect->setEnabled(true);
             if (netThread.joinable())
                 netThread.join();
         });
 
-        connect(worker, &NetworkWorker::roundEndingSoon, this, [this](int seconds){
+        connect(worker, &NetworkWorker::roomListCleared, this, [this](){
+            if (stackedWidget->currentIndex() == 1) {
+                QListWidgetItem *currentItem = listRooms->currentItem();
+                if (currentItem)
+                    lastSelectedRoom = currentItem->data(Qt::UserRole).toString();
+                else
+                    lastSelectedRoom = "";
+                listRooms->clear();
+            }
+        });
+
+        connect(worker, &NetworkWorker::roomListItem, this, [this](QString name, QString players, QString status){
+            if(stackedWidget->currentIndex() == 1) {
+                QString label = QString("%1 | %2 | %3").arg(name, players, status);
+                QListWidgetItem* item = new QListWidgetItem(label);
+                // tylko nazwa pokoju
+                item->setData(Qt::UserRole, name);
+                listRooms->addItem(item);
+
+                if (name == lastSelectedRoom) {
+                    item->setSelected(true);
+                    listRooms->setCurrentItem(item);
+                }
+            }
+        });
+
+        connect(worker, &NetworkWorker::roomJoin, this, [this](){
+            stackedWidget->setCurrentIndex(2); // ekran gry
+            tableScores->setRowCount(0);
+            currRoom->setText("Pokój: " + currRoomName);
+            appendLog("[INFO] Dolaczono do pokoju.");
+        });
+
+        connect(worker, &NetworkWorker::roomLeft, this, [this](){
+            stackedWidget->setCurrentIndex(1); // ekran lobby
+            currRoomName = "";
+            appendLog("[INFO] Opuszczono pokoj.");
+        });
+
+        connect(worker, &NetworkWorker::scoreUpdate, this, [this](QString user, int points){
+            updateScoreboard(user, points);
+        });
+
+        connect(worker, &NetworkWorker::roundEndingSoon, this, [this](){
             notif->setText("Uwaga! Runda zakonczy sie za chwile!");
             notif->setVisible(true);
         });
@@ -177,6 +276,12 @@ public:
         connect(worker, &NetworkWorker::roundFinished, this, [this](){
             notif->setVisible(false);
             appendLog("[INFO] Koniec rundy. Wyniki:");
+        });
+
+        connect(worker, &NetworkWorker::gameStarted, this, [this](QString lett){
+            letter->setText("Litera: " + lett);
+            appendLog("[INFO] Rozpoczeto gre. Litera: " + lett);
+            notif->setVisible(false);
         });
     }
 
@@ -207,14 +312,34 @@ private slots:
     }
 
     void onCreateRoom() {
-        QString cmd = "CreateNewRoom " + inputCmd->text();
-        worker->sendCommand(cmd.toStdString());
+        QString name = inputNewRoomName->text().trimmed();
+        if (name.isEmpty())
+            return;
+        currRoomName = name;
+
+        worker->sendCommand("CreateNewRoom " + name.toStdString());
+        QString rounds = "SetRoundLimit " + QString::number(cntRounds->value());
+        worker->sendCommand(rounds.toStdString());
     }
 
     void onJoinRoom() {
-        QString cmd = "JoinRoom " + inputCmd->text();
-        worker->sendCommand(cmd.toStdString());
-        notif->setVisible(false);
+        QListWidgetItem *item = listRooms->currentItem();
+        if (!item) {
+            appendLog("[WARN] Zaznacz pokoj na liscie!");
+            return;
+        }
+        QString roomName = item->data(Qt::UserRole).toString();
+        currRoomName = roomName;
+        worker->sendCommand("JoinRoom " + roomName.toStdString());
+    }
+
+    void onLeaveRoom() {
+        worker->sendCommand("LeaveRoom");
+        ans1->clear();
+        ans2->clear();
+        ans3->clear();
+        ans4->clear();
+        ans5->clear();
     }
 
     void onStartGame() {
@@ -238,6 +363,20 @@ private slots:
         appendLog("[INFO] Wyslano odpowiedzi.");
     }
 
+    void updateScoreboard(QString user, int points) {
+        for (int i=0; i<tableScores->rowCount(); ++i) {
+            if (tableScores->item(i, 0)->text() == user) {
+                tableScores->item(i, 1)->setText(QString::number(points));
+                return;
+            }
+        }
+        // dodaje nowego gracza do tabeli
+        int row = tableScores->rowCount();
+        tableScores->insertRow(row);
+        tableScores->setItem(row, 0, new QTableWidgetItem(user));
+        tableScores->setItem(row, 1, new QTableWidgetItem(QString::number(points)));
+    }
+
     void setupUI() {
         QWidget *central = new QWidget;
         setCentralWidget(central);
@@ -251,8 +390,7 @@ private slots:
         inputIp = new QLineEdit("127.0.0.1");
         inputPort = new QLineEdit("1234");
         inputNick = new QLineEdit("gracz1");
-        inputNick->setPlaceholderText("Twoj Nick");
-        btnConnect = new QPushButton("Polacz i Zaloguj!");
+        btnConnect = new QPushButton("Polacz!");
         connect(btnConnect, &QPushButton::clicked, this, &MainWindow::onConnect);
 
         layoutLogin->addWidget(new QLabel("IP Serwera:")); layoutLogin->addWidget(inputIp);
@@ -262,53 +400,95 @@ private slots:
         layoutLogin->addStretch();
 
         // lobby
-        QWidget *pageGame = new QWidget;
-        QVBoxLayout *layoutGame = new QVBoxLayout(pageGame);
+        QWidget *pageLobby = new QWidget;
+        QVBoxLayout *layoutLobby = new QVBoxLayout(pageLobby);
 
-        // pokoje
-        QHBoxLayout *roomLayout = new QHBoxLayout;
-        inputCmd = new QLineEdit();
-        inputCmd->setPlaceholderText("Nazwa pokoju...");
-        btnCreate = new QPushButton("Stworz pokoj");
-        btnJoin = new QPushButton("Dolacz!");
-        QPushButton *btnStart = new QPushButton("Start Rundy!");
-
-        // label
-        notif = new QLabel("");
-        notif->setAlignment(Qt::AlignCenter);
-        notif->setStyleSheet("color: red;");
-        notif->setVisible(false);
-
+        // pokoje:
+        // tworzenie pokoju
+        QGroupBox *createRoom = new QGroupBox("Stworz Pokoj!");
+        QHBoxLayout *layoutCreate = new QHBoxLayout(createRoom);
+        inputNewRoomName = new QLineEdit(); inputNewRoomName->setPlaceholderText("Nazwa pokoju");
+        cntRounds = new QSpinBox();
+        cntRounds->setRange(1, 20);
+        cntRounds->setValue(2);
+        cntRounds->setPrefix("Rundy: ");
+        btnCreate = new QPushButton("Stwórz");
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
-        connect(btnJoin, &QPushButton::clicked, this, &MainWindow::onJoinRoom);
-        connect(btnStart, &QPushButton::clicked, this, &MainWindow::onStartGame);
+        layoutCreate->addWidget(inputNewRoomName);
+        layoutCreate->addWidget(cntRounds);
+        layoutCreate->addWidget(btnCreate);
 
-        roomLayout->addWidget(inputCmd);
-        roomLayout->addWidget(btnCreate);
-        roomLayout->addWidget(btnJoin);
+        // lista
+        QGroupBox *roomList = new QGroupBox("Dostepne Pokoje:");
+        QVBoxLayout *layoutList = new QVBoxLayout(roomList);
+        listRooms = new QListWidget();
+        btnJoin = new QPushButton("Dolacz do zaznaczonego!");
+        connect(btnJoin, &QPushButton::clicked, this, &MainWindow::onJoinRoom);
+        layoutList->addWidget(listRooms);
+        layoutList->addWidget(btnJoin);
+
+        layoutLobby->addWidget(createRoom);
+        layoutLobby->addWidget(roomList);
+
+        // gra:
+        QWidget *pageRoom = new QWidget;
+        QVBoxLayout *layoutRoom = new QVBoxLayout(pageRoom);
+
+        // pokoj
+        QHBoxLayout *topBar = new QHBoxLayout;
+        currRoom = new QLabel("Pokoj:");
+        currRoom->setStyleSheet("font-weight: bold;");
+        letter = new QLabel("Litera: ?");
+        letter->setStyleSheet("font-weight: bold; color: green;");
+        btnLeave = new QPushButton("WyjdŸ z pokoju");
+        btnLeave->setStyleSheet("background-color: red; color: white;");
+        connect(btnLeave, &QPushButton::clicked, this, &MainWindow::onLeaveRoom);
+        topBar->addWidget(currRoom);
+        topBar->addWidget(letter);
+        topBar->addStretch();
+        topBar->addWidget(btnLeave);
+
+        // tabela
+        tableScores = new QTableWidget(0, 2);
+        tableScores->setHorizontalHeaderLabels({"Gracz", "Punkty"});
+        tableScores->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        tableScores->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        tableScores->setMaximumHeight(300);
 
         // odpowiedzi
-        QGroupBox *grpAns = new QGroupBox("Odpowiedzi:");
+        QGroupBox *grpAns = new QGroupBox("Twoje Odpowiedzi:");
         QVBoxLayout *boxAns = new QVBoxLayout(grpAns);
         ans1 = new QLineEdit(); ans1->setPlaceholderText("Panstwo");
         ans2 = new QLineEdit(); ans2->setPlaceholderText("Miasto");
         ans3 = new QLineEdit(); ans3->setPlaceholderText("Rzeka");
         ans4 = new QLineEdit(); ans4->setPlaceholderText("Potrawa");
         ans5 = new QLineEdit(); ans5->setPlaceholderText("Imie");
-        btnSendAnswers = new QPushButton("Przeslij!");
+        btnSendAnswers = new QPushButton("Wyslij Odpowiedzi!");
         connect(btnSendAnswers, &QPushButton::clicked, this, &MainWindow::onSendAnswers);
 
         boxAns->addWidget(ans1); boxAns->addWidget(ans2); boxAns->addWidget(ans3);
         boxAns->addWidget(ans4); boxAns->addWidget(ans5); boxAns->addWidget(btnSendAnswers);
 
-        layoutGame->addLayout(roomLayout);
-        layoutGame->addWidget(btnStart);
-        layoutGame->addWidget(notif);
-        layoutGame->addWidget(grpAns);
+        btnStart = new QPushButton("Start rundy!");
+        btnStart->setStyleSheet("background-color: green; color: white; padding: 10px;");
+        connect(btnStart, &QPushButton::clicked, this, &MainWindow::onStartGame);
+
+        notif = new QLabel("");
+        notif->setStyleSheet("background-color: red; color: white; padding: 10px;");
+        notif->setAlignment(Qt::AlignCenter);
+        notif->setVisible(false);
+
+        layoutRoom->addLayout(topBar);
+        layoutRoom->addWidget(new QLabel("Wyniki:"));
+        layoutRoom->addWidget(tableScores);
+        layoutRoom->addWidget(grpAns);
+        layoutRoom->addWidget(notif);
+        layoutRoom->addWidget(btnStart);
 
         // strony na stacku
         stackedWidget->addWidget(pageLogin); //0
-        stackedWidget->addWidget(pageGame);  //1
+        stackedWidget->addWidget(pageLobby); //1
+        stackedWidget->addWidget(pageRoom);  //2
 
         // [TESTOWO] konsola logów
         consoleLog = new QTextEdit;
@@ -327,7 +507,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     MainWindow w;
     w.setWindowTitle("Panstwa-Miasta");
-    w.resize(500, 600);
+    w.resize(500, 700);
     w.show();
     return app.exec();
 }
