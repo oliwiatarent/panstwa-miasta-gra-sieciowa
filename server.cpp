@@ -6,8 +6,8 @@
 #include <signal.h>
 #include <poll.h>
 #include <netdb.h>
-#include <ifaddrs.h>
 #include <sys/socket.h>
+#include <ifaddrs.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <cstring>
@@ -138,7 +138,7 @@ void StartGame(int i)
             if (strcmp(users[j].CustomRoom.c_str(), GameRooms[RoomIndex].RoomName.c_str()) == 0)
             {
                 users[j].InActiveGame = true;
-                write(fds[j].fd, "Your game started", sizeof("Your game started"));
+                write(fds[j].fd, "Your game started\n", sizeof("Your game started\n"));
             }
         }
         GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
@@ -328,12 +328,12 @@ int main(int argc, char **argv)
                                 users[i].username = responseToVector(buf)[0];
                                 users[i].active = true;
                                 printf("user added: %s\n", users[i].username.c_str());
-                                write(fds[i].fd, "Username available", sizeof("Username available"));
+                                write(fds[i].fd, "Username available\n", sizeof("Username available\n"));
                                 users[i].username_set = true;
                             }
                             else
                             {
-                                write(fds[i].fd, "Username already in use", sizeof("Username already in use"));
+                                write(fds[i].fd, "Username already in use\n", sizeof("Username already in use\n"));
                                 printf("user tried already used username\n");
                             }
                         }
@@ -352,7 +352,7 @@ int main(int argc, char **argv)
                                     {
 
                                         printf("New room created: %s\n", response[1].c_str());
-                                        write(fds[i].fd, "New Room Created", sizeof("New Room Created"));
+                                        write(fds[i].fd, "New Room Created\n", sizeof("New Room Created\n"));
 
                                         users[i].room = "CustomRoom";
                                         users[i].CustomRoom = users[i].recv[1];
@@ -381,7 +381,7 @@ int main(int argc, char **argv)
                                             if (GameRooms[j].ActiveGame == false && strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0)
                                             {
                                                 JoinedRoom = true;
-                                                write(fds[i].fd, "Joining Room", sizeof("Joining Room"));
+                                                write(fds[i].fd, "Joining Room\n", sizeof("Joining Room\n"));
                                                 GameRooms[j].players[GameRooms[j].NumberOfPlayers] = i;
                                                 GameRooms[j].NumberOfPlayers++;
                                                 printf("Joined Room: %s\n", users[i].recv[1].c_str());
@@ -460,7 +460,7 @@ int main(int argc, char **argv)
                                     }
                                     else
                                     {
-                                        write(fds[i].fd, "bad answers", sizeof("bad answers"));
+                                        write(fds[i].fd, "bad answers\n", sizeof("bad answers\n"));
                                     }
 
                                     printf("user %s gave answers: \n", users[i].username.c_str());
@@ -725,17 +725,18 @@ int main(int argc, char **argv)
                     if (winners.size() > 1)
                     {
                         printf("winners of round:\n");
-                        sendToAllInRoom("winners of round:", 19, GameRooms[i].RoomName);
+                        sendToAllInRoom("winners of round:\n", sizeof("winners of round:\n"), GameRooms[i].RoomName);
                     }
                     else
                     {
                         printf("winner of round:\n");
-                        sendToAllInRoom("winner of round:", 18, GameRooms[i].RoomName);
+                        sendToAllInRoom("winner of round:\n", sizeof("winner of round:\n"), GameRooms[i].RoomName);
                     }
                     for (int k = 0; k < winners.size(); k++)
                     {
                         printf("%s\n", winners[k].c_str());
-                        sendToAllInRoom(winners[k].c_str(), winners[k].size(), GameRooms[i].RoomName);
+                        std::string msg = winners[k] + '\n';
+                        sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
                     }
                     GameRooms[i].ActiveGame = false;
                     GameRooms[i].EndGame = false;
@@ -770,18 +771,19 @@ int main(int argc, char **argv)
                         if (winners.size() > 1)
                         {
                             printf("winners:\n");
-                            sendToAllInRoom("winners:", 8, GameRooms[i].RoomName);
+                            sendToAllInRoom("winners:\n", sizeof("winners:\n"), GameRooms[i].RoomName);
                         }
                         else
                         {
                             printf("winner:\n");
-                            sendToAllInRoom("winner:", 7, GameRooms[i].RoomName);
+                            sendToAllInRoom("winner:\n", sizeof("winner:\n"), GameRooms[i].RoomName);
                         }
                         printf("They got %d points\n",MaxEndPoints);
                         for (int k = 0; k < winners.size(); k++)
                         {
                             printf("%s\n", winners[k].c_str());
-                            sendToAllInRoom(winners[k].c_str(), winners[k].size(), GameRooms[i].RoomName);
+                            std::string msg = winners[k] + '\n';
+                            sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
                         }
                         for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
                         {
