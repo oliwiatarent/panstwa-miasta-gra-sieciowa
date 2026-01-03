@@ -410,6 +410,31 @@ int main(int argc, char **argv)
                                     printf("set round limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
                                 }
 
+                                if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
+                                {
+                                    int RoomIndex = findroom(users[i].CustomRoom);
+                                    users[i].room = "Start";
+                                    users[i].CustomRoom = "";
+                                    users[i].InActiveGame = false;
+                                    bool found = false;
+                                    GameRooms[RoomIndex].NumberOfPlayers--;
+
+                                    for (int j = 0; j < GameRooms[RoomIndex].NumberOfPlayers; j++)
+                                    {
+                                        if (i == GameRooms[RoomIndex].players[j])
+                                        {
+                                            found = true;
+                                        }
+                                        if (found)
+                                            GameRooms[RoomIndex].players[j] = GameRooms[RoomIndex].players[j + 1];
+                                    }
+                                    if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
+                                        GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
+                                    printf("left successfuly\n");
+                                    std::string msg = "left successfuly\n";
+                                    write(fds[i].fd, msg.c_str(), msg.size());
+                                }
+
                                 if (strcmp(users[i].recv[0].c_str(), "SendAnswers") == 0 && users[i].InActiveGame == true)
                                 {
                                     printf("got something\n");
@@ -546,6 +571,7 @@ int main(int argc, char **argv)
                                     int RoomIndex = findroom(users[i].CustomRoom);
                                     users[i].room = "Start";
                                     users[i].CustomRoom = "";
+                                    users[i].InActiveGame = false;
                                     bool found = false;
                                     GameRooms[RoomIndex].NumberOfPlayers--;
 
@@ -558,7 +584,7 @@ int main(int argc, char **argv)
                                         if (found)
                                             GameRooms[RoomIndex].players[j] = GameRooms[RoomIndex].players[j + 1];
                                     }
-                                    if (GameRooms[RoomIndex].owner == i)
+                                    if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
                                         GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
                                     printf("left successfuly\n");
                                     std::string msg = "left successfuly\n";
@@ -761,6 +787,10 @@ int main(int argc, char **argv)
                         {
                             users[GameRooms[i].players[j]].room = "Start";
                             users[GameRooms[i].players[j]].CustomRoom = "";
+                            users[GameRooms[i].players[j]].InActiveGame = false;
+
+                            std::string msg = "left successfuly\n";
+                            write(fds[GameRooms[i].players[j]].fd, msg.c_str(), msg.size());
                         }
                         GameRooms[i].NumberOfPlayers = 0;
                     }
