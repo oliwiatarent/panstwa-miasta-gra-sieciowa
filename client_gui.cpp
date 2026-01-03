@@ -35,6 +35,8 @@ signals:
     void connectedToServer();
     void loginSuccess();
     void loginFailed(QString msg);
+    void roundEndingSoon(int seconds);
+    void roundFinished();
 
 public:
     int sock = -1;
@@ -95,6 +97,16 @@ public:
                         QString msg = QString::fromUtf8(buf).trimmed();
                         emit logMessage(msg);
 
+                        //sygna³ do odliczania
+                        if (msg.contains("RoundEnding")) {
+                            QStringList parts = msg.split(" ");
+                            emit roundEndingSoon(parts[1].toInt());
+                        }
+
+                        //sygna³ koñca rundy
+                        if (msg.contains("winners of round"))
+                            emit roundFinished();
+
                         //logowanie
                         if (!logged_in && msg.contains("Username available")) {
                             logged_in = true;
@@ -131,6 +143,7 @@ class MainWindow : public QMainWindow {
     QPushButton *btnCreate, *btnJoin, *btnSendRaw;
     QLineEdit *ans1, *ans2, *ans3, *ans4, *ans5;
     QPushButton *btnSendAnswers;
+    QLabel *notif;
 
 public:
     MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
@@ -154,6 +167,16 @@ public:
             btnConnect->setEnabled(true);
             if (netThread.joinable())
                 netThread.join();
+        });
+
+        connect(worker, &NetworkWorker::roundEndingSoon, this, [this](int seconds){
+            notif->setText("Uwaga! Runda zakonczy sie za chwile!");
+            notif->setVisible(true);
+        });
+
+        connect(worker, &NetworkWorker::roundFinished, this, [this](){
+            notif->setVisible(false);
+            appendLog("[INFO] Koniec rundy. Wyniki:");
         });
     }
 
@@ -191,6 +214,7 @@ private slots:
     void onJoinRoom() {
         QString cmd = "JoinRoom " + inputCmd->text();
         worker->sendCommand(cmd.toStdString());
+        notif->setVisible(false);
     }
 
     void onStartGame() {
@@ -249,6 +273,12 @@ private slots:
         btnJoin = new QPushButton("Dolacz!");
         QPushButton *btnStart = new QPushButton("Start Rundy!");
 
+        // label
+        notif = new QLabel("");
+        notif->setAlignment(Qt::AlignCenter);
+        notif->setStyleSheet("color: red;");
+        notif->setVisible(false);
+
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
         connect(btnJoin, &QPushButton::clicked, this, &MainWindow::onJoinRoom);
         connect(btnStart, &QPushButton::clicked, this, &MainWindow::onStartGame);
@@ -273,6 +303,7 @@ private slots:
 
         layoutGame->addLayout(roomLayout);
         layoutGame->addWidget(btnStart);
+        layoutGame->addWidget(notif);
         layoutGame->addWidget(grpAns);
 
         // strony na stacku

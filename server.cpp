@@ -80,12 +80,12 @@ int NumberOfUsers = 1;
 int NumberOfRooms = 1;
 gameroom GameRooms[MAX_GAMEROOMS];
 
-void sendToAllInRoom(const char* message, int bytes, std::string roomName)
+void sendToAllInRoom(const char *message, int bytes, std::string roomName)
 {
 
     for (int i = 1; i < NumberOfUsers; i++)
     {
-        user& u = users[i];
+        user &u = users[i];
 
         if (strcmp(u.CustomRoom.c_str(), roomName.c_str()) == 0)
         {
@@ -99,13 +99,13 @@ void sendRoomInformationInLobby()
     for (int i = 1; i < NumberOfUsers; i++)
     {
 
-        user& u = users[i];
+        user &u = users[i];
         if (strcmp(u.room.c_str(), "Start") == 0 && u.username_set)
         {
 
             for (int j = 1; j < NumberOfRooms; j++)
             {
-                gameroom& g = GameRooms[j];
+                gameroom &g = GameRooms[j];
                 std::string msg = g.RoomName + " | " + std::to_string(g.NumberOfPlayers) + " | " + (g.ActiveGame ? "Active" : "Inactive");
                 write(fds[i].fd, msg.c_str(), msg.size());
             }
@@ -149,7 +149,7 @@ void sendRoomInformation()
 {
     for (int i = 1; i < NumberOfRooms; i++)
     {
-        gameroom& g = GameRooms[i];
+        gameroom &g = GameRooms[i];
         std::string msg;
 
         if (!g.ActiveGame)
@@ -157,7 +157,7 @@ void sendRoomInformation()
 
             for (int j = 1; j < NumberOfUsers; j++)
             {
-                user& u = users[j];
+                user &u = users[j];
 
                 if (strcmp(u.CustomRoom.c_str(), g.RoomName.c_str()) == 0)
                 {
@@ -200,14 +200,14 @@ std::vector<std::string> responseToVector(std::string input)
                 answer.pop_back();
             if (!answer.empty() && answer.back() == '\r')
                 answer.pop_back();
-            if (!answer.empty())
+            if(!answer.empty())
                 answers.push_back(answer);
         }
     }
     return answers;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     signal(SIGPIPE, SIG_IGN);
 
@@ -227,7 +227,7 @@ int main(int argc, char** argv)
     int one = 1;
     setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
-    if (bind(servSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
+    if (bind(servSock, (sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
     {
         perror("Bind failed");
         close(servSock);
@@ -249,7 +249,7 @@ int main(int argc, char** argv)
             sockaddr_in clientAddr = {};
             socklen_t clientAddrLen = sizeof(clientAddr);
 
-            int clientSock = accept(servSock, (sockaddr*)&clientAddr, &clientAddrLen);
+            int clientSock = accept(servSock, (sockaddr *)&clientAddr, &clientAddrLen);
 
             if (clientSock == -1)
             {
@@ -293,7 +293,7 @@ int main(int argc, char** argv)
                     // póki znajdujemy znak końca komendy
                     while ((pos = users[i].inputBuff.find('\n')) != std::string::npos) {
                         std::string fullCommand = users[i].inputBuff.substr(0, pos);
-                        users[i].inputBuff.erase(0, pos + 1); // +1 bo z \n
+                        users[i].inputBuff.erase(0, pos+1); // +1 bo z \n
 
                         if (fullCommand.empty())
                             continue;
@@ -401,7 +401,7 @@ int main(int argc, char** argv)
                             {
                                 int RoomIndex = findroom(users[i].CustomRoom);
 
-                                if (strcmp(users[i].recv[0].c_str(), "SetRoundLimit") == 0 && strcmp(users[i].username.c_str(), "admin") == 0) {
+                                if (strcmp(users[i].recv[0].c_str(), "SetRoundLimit") == 0 && strcmp(users[i].username.c_str(), "admin") == 0){
                                     GameRooms[RoomIndex].RoundsLimit = atoi(users[i].recv[1].c_str());
                                     printf("set round limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
                                 }
@@ -421,6 +421,11 @@ int main(int argc, char** argv)
                                                 users[i].TimePoints++;
                                                 GameRooms[RoomIndex].EndGame = true;
                                                 GameRooms[RoomIndex].StopTime = std::chrono::system_clock::now();
+
+                                                // dosyłam info o odliczaniu dla klientów
+                                                std::string msg = "RoundEnding 10\n";
+                                                sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
+                                                printf("Rozpoczeto odliczanie dla pokoju %s\n", GameRooms[RoomIndex].RoomName.c_str());
                                             }
                                         }
                                     }
@@ -438,12 +443,11 @@ int main(int argc, char** argv)
                             }
                             else if (strcmp(users[i].room.c_str(), "CustomRoom") == 0 && users[i].InActiveGame == false)
                             {
-                                if (strcmp(users[i].recv[0].c_str(), "SetRoundLimit") == 0 && (GameRooms[findroom(users[i].CustomRoom)].owner == i || strcmp(users[i].username.c_str(), "admin") == 0)) {
+                                if (strcmp(users[i].recv[0].c_str(), "SetRoundLimit") == 0 && (GameRooms[findroom(users[i].CustomRoom)].owner == i || strcmp(users[i].username.c_str(), "admin") == 0)){
                                     int RoomIndex = findroom(users[i].CustomRoom);
                                     GameRooms[RoomIndex].RoundsLimit = atoi(users[i].recv[1].c_str());
                                     printf("set round limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
-                                }
-                                else if (strcmp(users[i].recv[0].c_str(), "AddPlayerToRoom") == 0)
+                                }else if (strcmp(users[i].recv[0].c_str(), "AddPlayerToRoom") == 0)
                                 {
 
                                     if (response.size() == 2)
@@ -576,7 +580,7 @@ int main(int argc, char** argv)
 
                             else
                             {
-                                responses.insert({ fds[i].fd, response });
+                                responses.insert({fds[i].fd, response});
                             }
                         }
                     }
@@ -741,7 +745,7 @@ int main(int argc, char** argv)
                             printf("winner:\n");
                             sendToAllInRoom("winner:", 7, GameRooms[i].RoomName);
                         }
-                        printf("They got %d points\n", MaxEndPoints);
+                        printf("They got %d points\n",MaxEndPoints);
                         for (int k = 0; k < winners.size(); k++)
                         {
                             printf("%s\n", winners[k].c_str());
