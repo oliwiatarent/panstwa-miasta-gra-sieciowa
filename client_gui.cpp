@@ -35,6 +35,7 @@ signals:
     void connectedToServer();
     void loginSuccess();
     void loginFailed(QString msg);
+
 public:
     int sock = -1;
     std::atomic<bool> running;
@@ -244,9 +245,9 @@ private slots:
         QHBoxLayout *roomLayout = new QHBoxLayout;
         inputCmd = new QLineEdit();
         inputCmd->setPlaceholderText("Nazwa pokoju...");
-        btnCreate = new QPushButton("Stworz pokoj!");
+        btnCreate = new QPushButton("Stworz pokoj");
         btnJoin = new QPushButton("Dolacz!");
-        QPushButton *btnStart = new QPushButton("Start Rundy");
+        QPushButton *btnStart = new QPushButton("Start Rundy!");
 
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
         connect(btnJoin, &QPushButton::clicked, this, &MainWindow::onJoinRoom);
@@ -284,7 +285,7 @@ private slots:
         consoleLog->setStyleSheet("background-color: #333; color: #0f0;");
 
         mainLayout->addWidget(stackedWidget);
-        mainLayout->addWidget(new QLabel("Komunikaty serwera:"));
+        mainLayout->addWidget(new QLabel("Komunikaty:"));
         mainLayout->addWidget(consoleLog);
     }
 };
