@@ -153,12 +153,12 @@ public:
                             else {
                                 emit logMessage(msg);
 
-                                //sygna³ do odliczania
+                                //sygnaï¿½ do odliczania
                                 if (msg.contains("RoundEnding")) {
                                     emit roundEndingSoon();
                                 }
 
-                                //sygna³ koñca rundy
+                                //sygnaï¿½ koï¿½ca rundy
                                 if (msg.contains("winner"))
                                     emit roundFinished();
 
@@ -199,6 +199,7 @@ class MainWindow : public QMainWindow {
     QListWidget *listRooms;
     QLineEdit *inputNewRoomName;
     QSpinBox *cntRounds;
+    QSpinBox *cntPlayers;
     QPushButton *btnCreate, *btnJoin;
     QString lastSelectedRoom = "";
 
@@ -267,7 +268,7 @@ public:
         connect(worker, &NetworkWorker::roomJoin, this, [this](){
             stackedWidget->setCurrentIndex(2); // ekran gry
             tableScores->setRowCount(0);
-            currRoom->setText("Pokój: " + currRoomName);
+            currRoom->setText("Pokï¿½j: " + currRoomName);
             appendLog("[INFO] Dolaczono do pokoju.");
         });
 
@@ -338,6 +339,8 @@ private slots:
         worker->sendCommand("CreateNewRoom " + name.toStdString());
         QString rounds = "SetRoundLimit " + QString::number(cntRounds->value());
         worker->sendCommand(rounds.toStdString());
+        QString players = "SetPlayersLimit " + QString::number(cntPlayers->value());
+        worker->sendCommand(players.toStdString());
     }
 
     void onJoinRoom() {
@@ -449,10 +452,15 @@ private slots:
         cntRounds->setRange(1, 20);
         cntRounds->setValue(2);
         cntRounds->setPrefix("Rundy: ");
-        btnCreate = new QPushButton("Stwórz");
+        cntPlayers = new QSpinBox();
+        cntPlayers->setRange(2, 8);
+        cntPlayers->setValue(4);
+        cntPlayers->setPrefix("Gracze: ");
+        btnCreate = new QPushButton("Stwï¿½rz");
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
         layoutCreate->addWidget(inputNewRoomName);
         layoutCreate->addWidget(cntRounds);
+        layoutCreate->addWidget(cntPlayers);
         layoutCreate->addWidget(btnCreate);
 
         // lista
@@ -477,7 +485,7 @@ private slots:
         currRoom->setStyleSheet("font-weight: bold;");
         letter = new QLabel("Litera: ?");
         letter->setStyleSheet("font-weight: bold; color: green;");
-        btnLeave = new QPushButton("WyjdŸ z pokoju");
+        btnLeave = new QPushButton("Wyjdï¿½ z pokoju");
         btnLeave->setStyleSheet("background-color: red; color: white;");
         connect(btnLeave, &QPushButton::clicked, this, &MainWindow::onLeaveRoom);
         topBar->addWidget(currRoom);
@@ -527,7 +535,7 @@ private slots:
         stackedWidget->addWidget(pageLobby); //1
         stackedWidget->addWidget(pageRoom);  //2
 
-        // [TESTOWO] konsola logów
+        // [TESTOWO] konsola logï¿½w
         consoleLog = new QTextEdit;
         consoleLog->setReadOnly(true);
         consoleLog->setStyleSheet("background-color: #333; color: #0f0;");

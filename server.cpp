@@ -64,6 +64,7 @@ public:
     char GameLetter = 'A';
     int owner;
     int players[10];
+    int PlayersLimit = 3;
     int NumberOfPlayers = 0;
     std::string RoomName;
     bool ActiveGame = false;
@@ -387,7 +388,7 @@ int main(int argc, char **argv)
 
                                         for (int j = 1; j < NumberOfRooms; j++)
                                         {
-                                            if (GameRooms[j].ActiveGame == false && strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0)
+                                            if (GameRooms[j].ActiveGame == false && strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0 && GameRooms[j].NumberOfPlayers < GameRooms[j].PlayersLimit)
                                             {
                                                 JoinedRoom = true;
                                                 write(fds[i].fd, "Joining Room\n", sizeof("Joining Room\n"));
@@ -408,6 +409,9 @@ int main(int argc, char **argv)
                                                         write(fds[i].fd, msg.c_str(), msg.size());
                                                     }
                                                 }
+                                            } else if (GameRooms[j].NumberOfPlayers == GameRooms[j].PlayersLimit) {
+                                                printf("Pokoj jest pelny\n");
+                                                write(fds[i].fd, "Pokoj jest pelny\n", sizeof("Pokoj jest pelny\n"));
                                             }
                                         }
                                         if (!JoinedRoom)
@@ -429,6 +433,11 @@ int main(int argc, char **argv)
                                 if (strcmp(users[i].recv[0].c_str(), "SetRoundLimit") == 0 && strcmp(users[i].username.c_str(), "admin") == 0){
                                     GameRooms[RoomIndex].RoundsLimit = atoi(users[i].recv[1].c_str());
                                     printf("set round limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
+                                }
+
+                                if (strcmp(users[i].recv[0].c_str(), "SetPlayersLimit") == 0 && strcmp(users[i].username.c_str(), "admin") == 0){
+                                    GameRooms[RoomIndex].PlayersLimit = atoi(users[i].recv[1].c_str());
+                                    printf("set players limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
                                 }
 
                                 if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
@@ -500,6 +509,10 @@ int main(int argc, char **argv)
                                     int RoomIndex = findroom(users[i].CustomRoom);
                                     GameRooms[RoomIndex].RoundsLimit = atoi(users[i].recv[1].c_str());
                                     printf("set round limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
+                                } else if (strcmp(users[i].recv[0].c_str(), "SetPlayersLimit") == 0 && (GameRooms[findroom(users[i].CustomRoom)].owner == i || strcmp(users[i].username.c_str(), "admin") == 0)) {
+                                    int RoomIndex = findroom(users[i].CustomRoom);
+                                    GameRooms[RoomIndex].PlayersLimit = atoi(users[i].recv[1].c_str());
+                                    printf("set player limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
                                 }else if (strcmp(users[i].recv[0].c_str(), "AddPlayerToRoom") == 0)
                                 {
 
