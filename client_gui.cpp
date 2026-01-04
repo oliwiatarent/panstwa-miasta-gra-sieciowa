@@ -153,12 +153,12 @@ public:
                             else {
                                 emit logMessage(msg);
 
-                                //sygna� do odliczania
+                                //sygnal do odliczania
                                 if (msg.contains("RoundEnding")) {
                                     emit roundEndingSoon();
                                 }
 
-                                //sygna� ko�ca rundy
+                                //sygnal konca rundy
                                 if (msg.contains("winner"))
                                     emit roundFinished();
 
@@ -268,7 +268,7 @@ public:
         connect(worker, &NetworkWorker::roomJoin, this, [this](){
             stackedWidget->setCurrentIndex(2); // ekran gry
             tableScores->setRowCount(0);
-            currRoom->setText("Pok�j: " + currRoomName);
+            currRoom->setText("Pokoj: " + currRoomName);
             appendLog("[INFO] Dolaczono do pokoju.");
         });
 
@@ -456,7 +456,7 @@ private slots:
         cntPlayers->setRange(2, 8);
         cntPlayers->setValue(4);
         cntPlayers->setPrefix("Gracze: ");
-        btnCreate = new QPushButton("Stw�rz");
+        btnCreate = new QPushButton("Stworz");
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
         layoutCreate->addWidget(inputNewRoomName);
         layoutCreate->addWidget(cntRounds);
@@ -485,7 +485,7 @@ private slots:
         currRoom->setStyleSheet("font-weight: bold;");
         letter = new QLabel("Litera: ?");
         letter->setStyleSheet("font-weight: bold; color: green;");
-        btnLeave = new QPushButton("Wyjd� z pokoju");
+        btnLeave = new QPushButton("Wyjdz z pokoju");
         btnLeave->setStyleSheet("background-color: red; color: white;");
         connect(btnLeave, &QPushButton::clicked, this, &MainWindow::onLeaveRoom);
         topBar->addWidget(currRoom);
