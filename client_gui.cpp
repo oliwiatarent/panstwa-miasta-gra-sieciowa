@@ -54,6 +54,7 @@ public:
     std::atomic<bool> running;
     bool logged_in = false;
     char username[255];
+    QString inputBuff;  // do buforowania reada
 
     NetworkWorker() { running = true; }
 
@@ -105,12 +106,17 @@ public:
 
                     if (bytes > 0) {
                         buf[bytes] = '\0';
-                        QString buff = QString::fromUtf8(buf);
-                        QStringList lines = buff.split('\n', Qt::SkipEmptyParts);
+                        inputBuff += QString::fromUtf8(buf);
+                        //QString buff = QString::fromUtf8(buf);
+                        //QStringList lines = buff.split('\n', Qt::SkipEmptyParts);
                         //emit logMessage(msg);
 
-                        for(const QString &line : lines) {
-                            QString msg = line.trimmed();
+                        while (inputBuff.contains('\n')) {
+                            int lineEnd = inputBuff.indexOf('\n');
+                            QString msg = inputBuff.left(lineEnd).trimmed();
+                            inputBuff.remove(0, lineEnd + 1);
+                            if (msg.isEmpty())
+                                continue;
 
                             // lista pokoi
                             if (msg == "ROOMLIST_START") {
