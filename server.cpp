@@ -144,7 +144,7 @@ void StartGame(int i)
         GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
         printf("activeted game for room and all players\n");
 
-        std::string msg = "Litera: " + std::string(1, GameRooms[RoomIndex].GameLetter);
+        std::string msg = "Litera: " + std::string(1, GameRooms[RoomIndex].GameLetter) + '\n';
         sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
     }
 }
@@ -829,7 +829,7 @@ int main(int argc, char **argv)
 
         sendRoomInformationInLobby();
 
-        sendRoomInformation();
+        //sendRoomInformation();
     }
 
     close(servSock);
