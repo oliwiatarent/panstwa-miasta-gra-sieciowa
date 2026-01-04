@@ -233,6 +233,7 @@ public:
         connect(worker, &NetworkWorker::loginFailed, this, [this](QString msg){
             appendLog("[INFO] Logowanie nie powiodlo sie!");
             btnConnect->setEnabled(true);
+            appendLog(msg);
             if (netThread.joinable())
                 netThread.join();
         });
