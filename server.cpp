@@ -211,6 +211,12 @@ std::vector<std::string> responseToVector(std::string input)
     return answers;
 }
 
+long long count_milliseconds(std::chrono::system_clock::time_point start)
+{
+    long long elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count();
+    return elapsed;
+}
+
 int main(int argc, char **argv)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -667,7 +673,7 @@ int main(int argc, char **argv)
                     GameRooms[i].ThreePlayersEnteredTime = std::chrono::system_clock::now();
                     GameRooms[i].CountingDownToStart = true;
                 }
-                else if (GameRooms[i].GameStartLimit < (std::chrono::system_clock::now() - GameRooms[i].ThreePlayersEnteredTime).count() / 1000000)
+                else if (GameRooms[i].GameStartLimit < count_milliseconds(GameRooms[i].ThreePlayersEnteredTime))
                 {
                     GameRooms[i].ContinueGame = true;
                     GameRooms[i].RoundsLeft = GameRooms[i].RoundsLimit;
@@ -680,7 +686,7 @@ int main(int argc, char **argv)
             if (GameRooms[i].RoundsLeft > 0)
             {
                 GameRooms[i].ContinueGame = true;
-                if (GameRooms[i].ContinueGameTimeLimit < (std::chrono::system_clock::now() - GameRooms[i].ContinueGameTimer).count() / 1000000 && GameRooms[i].StartAgain == true && GameRooms[i].ActiveGame == false)
+                if (GameRooms[i].ContinueGameTimeLimit < count_milliseconds(GameRooms[i].ContinueGameTimer) && GameRooms[i].StartAgain == true && GameRooms[i].ActiveGame == false)
                 {
                     StartGame(GameRooms[i].owner);
                     GameRooms[i].RoundsLeft--;
@@ -693,7 +699,7 @@ int main(int argc, char **argv)
             if (GameRooms[i].ActiveGame)
             {
 
-                if (GameRooms[i].TimeLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StartTime).count() / 1000000) || (GameRooms[i].EndGame == true && GameRooms[i].StopLimit < (int)((std::chrono::system_clock::now() - GameRooms[i].StopTime).count() / 1000000)))
+                if (GameRooms[i].TimeLimit < count_milliseconds(GameRooms[i].StartTime) || (GameRooms[i].EndGame == true && GameRooms[i].StopLimit < count_milliseconds(GameRooms[i].StopTime)))
                 {
                     if (GameRooms[i].NumberOfPlayers < 3)
                         GameRooms[i].RoundsLeft = 0;
