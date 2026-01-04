@@ -348,6 +348,34 @@ int main(int argc, char **argv)
 
                             users[i].recv = response;
 
+                            if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
+                            {
+                                int RoomIndex = findroom(users[i].CustomRoom);
+                                // komunikat od gracza wychodzącego
+                                std::string msg = "PlayerLeft:" + users[i].username + "\n";
+                                sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
+                                users[i].room = "Start";
+                                users[i].CustomRoom = "";
+                                users[i].InActiveGame = false;
+                                bool found = false;
+                                GameRooms[RoomIndex].NumberOfPlayers--;
+
+                                for (int j = 0; j < GameRooms[RoomIndex].NumberOfPlayers; j++)
+                                {
+                                    if (i == GameRooms[RoomIndex].players[j])
+                                    {
+                                        found = true;
+                                    }
+                                    if (found)
+                                        GameRooms[RoomIndex].players[j] = GameRooms[RoomIndex].players[j + 1];
+                                }
+                                if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
+                                    GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
+                                printf("left successfuly\n");
+                                std::string msgL = "left successfuly\n";
+                                write(fds[i].fd, msgL.c_str(), msgL.size());
+                            }
+
                             if (users[i].room.compare("Start") == 0)
                             {
 
@@ -438,34 +466,6 @@ int main(int argc, char **argv)
                                 if (strcmp(users[i].recv[0].c_str(), "SetPlayersLimit") == 0 && strcmp(users[i].username.c_str(), "admin") == 0){
                                     GameRooms[RoomIndex].PlayersLimit = atoi(users[i].recv[1].c_str());
                                     printf("set players limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
-                                }
-
-                                if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
-                                {
-                                    int RoomIndex = findroom(users[i].CustomRoom);
-                                    // komunikat od gracza wychodzącego
-                                    std::string msg = "PlayerLeft:" + users[i].username + "\n";
-                                    sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
-                                    users[i].room = "Start";
-                                    users[i].CustomRoom = "";
-                                    users[i].InActiveGame = false;
-                                    bool found = false;
-                                    GameRooms[RoomIndex].NumberOfPlayers--;
-
-                                    for (int j = 0; j < GameRooms[RoomIndex].NumberOfPlayers; j++)
-                                    {
-                                        if (i == GameRooms[RoomIndex].players[j])
-                                        {
-                                            found = true;
-                                        }
-                                        if (found)
-                                            GameRooms[RoomIndex].players[j] = GameRooms[RoomIndex].players[j + 1];
-                                    }
-                                    if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
-                                        GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
-                                    printf("left successfuly\n");
-                                    std::string msgL = "left successfuly\n";
-                                    write(fds[i].fd, msgL.c_str(), msgL.size());
                                 }
 
                                 if (strcmp(users[i].recv[0].c_str(), "SendAnswers") == 0 && users[i].InActiveGame == true)
@@ -603,33 +603,6 @@ int main(int argc, char **argv)
                                         printf("tried to kick player without perms\n");
                                     }
                                 }
-                                else if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
-                                {
-                                    int RoomIndex = findroom(users[i].CustomRoom);
-                                    // komunikat od gracza wychodzącego
-                                    std::string msg = "PlayerLeft:" + users[i].username + "\n";
-                                    sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
-                                    users[i].room = "Start";
-                                    users[i].CustomRoom = "";
-                                    users[i].InActiveGame = false;
-                                    bool found = false;
-                                    GameRooms[RoomIndex].NumberOfPlayers--;
-
-                                    for (int j = 0; j < GameRooms[RoomIndex].NumberOfPlayers; j++)
-                                    {
-                                        if (i == GameRooms[RoomIndex].players[j])
-                                        {
-                                            found = true;
-                                        }
-                                        if (found)
-                                            GameRooms[RoomIndex].players[j] = GameRooms[RoomIndex].players[j + 1];
-                                    }
-                                    if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
-                                        GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
-                                    printf("left successfuly\n");
-                                    std::string msgL = "left successfuly\n";
-                                    write(fds[i].fd, msgL.c_str(), msgL.size());
-                                }
                                 else if (strcmp(users[i].recv[0].c_str(), "DeleteRoom") == 0)
                                 {
                                     int RoomIndex = findroom(users[i].CustomRoom);
@@ -648,11 +621,6 @@ int main(int argc, char **argv)
                                         printf("deleted given room\n");
                                     }
                                 }
-                            }
-
-                            else
-                            {
-                                responses.insert({fds[i].fd, response});
                             }
                         }
                     }
