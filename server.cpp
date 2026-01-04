@@ -251,7 +251,7 @@ int main(int argc, char **argv)
 
     while (true)
     {
-        int ready = poll(fds, fdCount, 1000);
+        poll(fds, fdCount, 1000);
 
         if (fds[0].revents & POLLIN)
         {
@@ -300,7 +300,7 @@ int main(int argc, char **argv)
 
                     auto pos = 0;
                     // póki znajdujemy znak końca komendy
-                    while ((pos = users[i].inputBuff.find('\n')) != std::string::npos) {
+                    while ((const size_t) (pos = users[i].inputBuff.find('\n')) != std::string::npos) {
                         std::string fullCommand = users[i].inputBuff.substr(0, pos);
                         users[i].inputBuff.erase(0, pos+1); // +1 bo z \n
 
@@ -466,7 +466,7 @@ int main(int argc, char **argv)
                                     // std::chrono::_V2::system_clock::time_point CurrentTime = std::chrono::system_clock::now();
                                     if (response.size() <= 6)
                                     {
-                                        for (int j = 1; j < response.size(); j++)
+                                        for (int j = 1; j < (int) response.size(); j++)
                                         {
                                             users[i].word[j - 1] = users[i].recv[j];
                                             if (!GameRooms[RoomIndex].EndGame)
@@ -488,7 +488,7 @@ int main(int argc, char **argv)
                                     }
 
                                     printf("user %s gave answers: \n", users[i].username.c_str());
-                                    for (int j = 0; j < response.size() - 1; j++)
+                                    for (int j = 0; j < (int) response.size() - 1; j++)
                                     {
                                         printf("%s\n", users[i].word[j].c_str());
                                     }
@@ -759,7 +759,7 @@ int main(int argc, char **argv)
                         printf("winner of round:\n");
                         sendToAllInRoom("winner of round:\n", sizeof("winner of round:\n"), GameRooms[i].RoomName);
                     }
-                    for (int k = 0; k < winners.size(); k++)
+                    for (int k = 0; k < (int) winners.size(); k++)
                     {
                         printf("%s\n", winners[k].c_str());
                         std::string msg = winners[k] + '\n';
@@ -806,7 +806,7 @@ int main(int argc, char **argv)
                             sendToAllInRoom("winner:\n", sizeof("winner:\n"), GameRooms[i].RoomName);
                         }
                         printf("They got %d points\n",MaxEndPoints);
-                        for (int k = 0; k < winners.size(); k++)
+                        for (int k = 0; k < (int) winners.size(); k++)
                         {
                             printf("%s\n", winners[k].c_str());
                             std::string msg = winners[k] + '\n';
