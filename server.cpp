@@ -360,6 +360,9 @@ int main(int argc, char **argv)
                                         GameRooms[NumberOfRooms].players[GameRooms[NumberOfRooms].NumberOfPlayers] = i;
                                         GameRooms[NumberOfRooms].NumberOfPlayers++;
                                         GameRooms[NumberOfRooms].owner = i;
+                                        // do wyświetlania listy graczy
+                                        std::string msg = "Points:" + users[i].username + ":0\n";
+                                        write(fds[i].fd, msg.c_str(), msg.size());
                                         NumberOfRooms++;
                                     }
                                     else
@@ -387,6 +390,18 @@ int main(int argc, char **argv)
                                                 printf("Joined Room: %s\n", users[i].recv[1].c_str());
                                                 users[i].room = "CustomRoom";
                                                 users[i].CustomRoom = users[i].recv[1];
+                                                // do wyświetlania listy graczy
+                                                std::string msg = "Points:" + users[i].username + ":0\n";
+                                                sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[j].RoomName);
+                                                for (int k = 0; k < GameRooms[j].NumberOfPlayers; k++)
+                                                {
+                                                    int player = GameRooms[j].players[k];
+                                                    if (player != i)
+                                                    {
+                                                        std::string msg = "Points:" + users[player].username + ":0\n";
+                                                        write(fds[i].fd, msg.c_str(), msg.size());
+                                                    }
+                                                }
                                             }
                                         }
                                         if (!JoinedRoom)
