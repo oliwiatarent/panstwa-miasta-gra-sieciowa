@@ -255,7 +255,6 @@ int main(int argc, char **argv)
 
         if (fds[0].revents & POLLIN)
         {
-            char buf[255]{};
             sockaddr_in clientAddr = {};
             socklen_t clientAddrLen = sizeof(clientAddr);
 
@@ -363,6 +362,7 @@ int main(int argc, char **argv)
                                         users[i].room = "CustomRoom";
                                         users[i].CustomRoom = users[i].recv[1];
                                         GameRooms[NumberOfRooms].RoomName = users[i].recv[1];
+                                        GameRooms[NumberOfRooms].NumberOfPlayers = 0; // zeruje starych graczy
                                         GameRooms[NumberOfRooms].players[GameRooms[NumberOfRooms].NumberOfPlayers] = i;
                                         GameRooms[NumberOfRooms].NumberOfPlayers++;
                                         GameRooms[NumberOfRooms].owner = i;
