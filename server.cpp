@@ -428,6 +428,9 @@ int main(int argc, char **argv)
                                 if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
                                 {
                                     int RoomIndex = findroom(users[i].CustomRoom);
+                                    // komunikat od gracza wychodzącego
+                                    std::string msg = "PlayerLeft:" + users[i].username + "\n";
+                                    sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
                                     users[i].room = "Start";
                                     users[i].CustomRoom = "";
                                     users[i].InActiveGame = false;
@@ -446,8 +449,8 @@ int main(int argc, char **argv)
                                     if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
                                         GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
                                     printf("left successfuly\n");
-                                    std::string msg = "left successfuly\n";
-                                    write(fds[i].fd, msg.c_str(), msg.size());
+                                    std::string msgL = "left successfuly\n";
+                                    write(fds[i].fd, msgL.c_str(), msgL.size());
                                 }
 
                                 if (strcmp(users[i].recv[0].c_str(), "SendAnswers") == 0 && users[i].InActiveGame == true)
@@ -584,6 +587,9 @@ int main(int argc, char **argv)
                                 else if (strcmp(users[i].recv[0].c_str(), "LeaveRoom") == 0)
                                 {
                                     int RoomIndex = findroom(users[i].CustomRoom);
+                                    // komunikat od gracza wychodzącego
+                                    std::string msg = "PlayerLeft:" + users[i].username + "\n";
+                                    sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[RoomIndex].RoomName);
                                     users[i].room = "Start";
                                     users[i].CustomRoom = "";
                                     users[i].InActiveGame = false;
@@ -602,8 +608,8 @@ int main(int argc, char **argv)
                                     if (GameRooms[RoomIndex].owner == i && GameRooms[RoomIndex].NumberOfPlayers > 0)
                                         GameRooms[RoomIndex].owner = GameRooms[RoomIndex].players[0];
                                     printf("left successfuly\n");
-                                    std::string msg = "left successfuly\n";
-                                    write(fds[i].fd, msg.c_str(), msg.size());
+                                    std::string msgL = "left successfuly\n";
+                                    write(fds[i].fd, msgL.c_str(), msgL.size());
                                 }
                                 else if (strcmp(users[i].recv[0].c_str(), "DeleteRoom") == 0)
                                 {

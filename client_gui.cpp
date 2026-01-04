@@ -46,6 +46,7 @@ signals:
     void scoreUpdate(QString user, int points);
     void roomJoin();
     void roomLeft();
+    void playerLeftGame(QString player);
     void gameStarted(QString letter);
 
 public:
@@ -137,6 +138,11 @@ public:
                                 // Litera: X
                                 QString letter = msg.section(":", 1).trimmed();
                                 emit gameStarted(letter);
+                            }
+                            else if (msg.contains("PlayerLeft")) {
+                                // PlayerLeft:nick
+                                QString player = msg.section(":", 1).trimmed();
+                                emit playerLeftGame(player);
                             }
                             else {
                                 emit logMessage(msg);
@@ -283,6 +289,11 @@ public:
             appendLog("[INFO] Rozpoczeto gre. Litera: " + lett);
             notif->setVisible(false);
         });
+
+        connect(worker, &NetworkWorker::playerLeftGame, this, [this](QString player){
+            markPlayerAsLeft(player);
+            appendLog("[INFO] Gracz " + player + " opuscil gre.");
+        });
     }
 
     ~MainWindow() {
@@ -367,6 +378,11 @@ private slots:
         for (int i=0; i<tableScores->rowCount(); ++i) {
             if (tableScores->item(i, 0)->text() == user) {
                 tableScores->item(i, 1)->setText(QString::number(points));
+                for (int col=0; col<2; ++col) {
+                    QFont f = tableScores->item(i, col)->font();
+                    f.setStrikeOut(false);
+                    tableScores->item(i, col)->setFont(f);
+                }
                 return;
             }
         }
@@ -375,6 +391,20 @@ private slots:
         tableScores->insertRow(row);
         tableScores->setItem(row, 0, new QTableWidgetItem(user));
         tableScores->setItem(row, 1, new QTableWidgetItem(QString::number(points)));
+    }
+
+    void markPlayerAsLeft(QString player) {
+        for(int i = 0; i < tableScores->rowCount(); ++i) {
+            if(tableScores->item(i, 0)->text() == player) {
+                for(int col = 0; col < 2; ++col) {
+                    QTableWidgetItem* item = tableScores->item(i, col);
+                    QFont font = item->font();
+                    font.setStrikeOut(true);
+                    item->setFont(font);
+                }
+                break;
+            }
+        }
     }
 
     void setupUI() {
