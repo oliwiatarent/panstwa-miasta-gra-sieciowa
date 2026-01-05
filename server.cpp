@@ -640,7 +640,31 @@ int main(int argc, char **argv)
                     users[j] = users[j + 1];
                 }
 
+                int removed = i;
+
+                for (int j = 1; j < NumberOfRooms; j++)
+                {
+                    for (int k = 0; k < GameRooms[j].NumberOfPlayers; )
+                    {
+                        if (GameRooms[j].players[k] == removed)
+                        {
+                            for (int x = k; x < GameRooms[j].NumberOfPlayers - 1; x++)
+                                GameRooms[j].players[x] = GameRooms[j].players[x + 1];
+
+                            GameRooms[j].NumberOfPlayers--;
+                        }
+                        else
+                        {
+                            if (GameRooms[j].players[k] > removed)
+                                GameRooms[j].players[k]--;
+
+                            k++;
+                        }
+                    }
+                }
+
                 fdCount--;
+                NumberOfUsers--;
                 i--;
             }
         }
