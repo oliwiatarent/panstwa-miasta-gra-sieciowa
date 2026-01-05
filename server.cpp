@@ -679,133 +679,117 @@ int main(int argc, char **argv)
             }
             if (GameRooms[i].ActiveGame)
             {
-
-                if (GameRooms[i].TimeLimit < count_milliseconds(GameRooms[i].StartTime) || (GameRooms[i].EndGame == true && GameRooms[i].StopLimit < count_milliseconds(GameRooms[i].StopTime)))
-                {
+                if (
+                    GameRooms[i].TimeLimit < count_milliseconds(GameRooms[i].StartTime) ||
+                    (GameRooms[i].EndGame &&
+                    GameRooms[i].StopLimit < count_milliseconds(GameRooms[i].StopTime))
+                ) {
                     if (GameRooms[i].NumberOfPlayers < 3)
                         GameRooms[i].RoundsLeft = 0;
-                    printf("%d\n", GameRooms[i].NumberOfPlayers);
+
                     int MaxPoints = 0;
-                    std::vector<std::string> winners;
-                    for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
-                    {
-                        users[GameRooms[i].players[j]].InActiveGame = false;
-                        for (int k = 0; k < 5; k++)
-                        {
-                            if (users[GameRooms[i].players[j]].word[k][0] == GameRooms[i].GameLetter || users[GameRooms[i].players[j]].word[k][0] == GameRooms[i].GameLetter + 32)
-                            {
-                                bool p20 = true;
-                                for (int l = 0; l < GameRooms[i].NumberOfPlayers; l++)
-                                {
-                                    if (l != GameRooms[i].players[j])
-                                    {
-                                        if (strcmp(users[GameRooms[i].players[j]].word[k].c_str(), users[l].word[k].c_str()) == 0)
-                                        {
-                                            p20 = false;
-                                            users[GameRooms[i].players[j]].points += 10;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (p20)
-                                {
-                                    users[GameRooms[i].players[j]].points += 20;
+                    std::vector<std::string> roundWinners;
+
+                    for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++) {
+                        int player_id = GameRooms[i].players[j];
+                        users[player_id].InActiveGame = false;
+
+                        for (int k = 0; k < 5; k++) {
+                            if (users[player_id].word[k].empty())
+                                continue;
+
+                            char c = users[player_id].word[k][0];
+                            if (c != GameRooms[i].GameLetter &&
+                                c != GameRooms[i].GameLetter + 32)
+                                continue;
+
+                            bool unique = true;
+
+                            for (int l = 0; l < GameRooms[i].NumberOfPlayers; l++) {
+                                int other_player_id = GameRooms[i].players[l];
+                                if (other_player_id == player_id)
+                                    continue;
+
+                                if (users[player_id].word[k] == users[other_player_id].word[k]) {
+                                    unique = false;
+                                    users[player_id].points += 10;
+                                    break;
                                 }
                             }
-                        }
-                        printf("player %s got %d points\n", users[GameRooms[i].players[j]].username.c_str(), users[GameRooms[i].players[j]].points);
 
-                        std::string msg = "Points:" + users[GameRooms[i].players[j]].username + ":" + std::to_string(users[GameRooms[i].players[j]].points) + "\n";
+                            if (unique)
+                                users[player_id].points += 20;
+                        }
+
+                        std::string msg =
+                            "Points:" + users[player_id].username + ":" +
+                            std::to_string(users[player_id].points) + "\n";
                         sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
 
-                        if (users[GameRooms[i].players[j]].points > MaxPoints)
-                        {
-                            MaxPoints = users[GameRooms[i].players[j]].points;
-                            winners.clear();
-                            winners.push_back(users[GameRooms[i].players[j]].username);
+                        if (users[player_id].points > MaxPoints) {
+                            MaxPoints = users[player_id].points;
+                            roundWinners.clear();
+                            roundWinners.push_back(users[player_id].username);
                         }
-                        else if (users[GameRooms[i].players[j]].points == MaxPoints)
-                        {
-                            winners.push_back(users[GameRooms[i].players[j]].username);
+                        else if (users[player_id].points == MaxPoints) {
+                            roundWinners.push_back(users[player_id].username);
                         }
                     }
 
-                    if (winners.size() > 1)
-                    {
-                        printf("winners of round:\n");
-                        sendToAllInRoom("winners of round:\n", sizeof("winners of round:\n"), GameRooms[i].RoomName);
-                    }
+                    if (roundWinners.size() > 1)
+                        sendToAllInRoom("winners of round:\n", 18, GameRooms[i].RoomName);
                     else
-                    {
-                        printf("winner of round:\n");
-                        sendToAllInRoom("winner of round:\n", sizeof("winner of round:\n"), GameRooms[i].RoomName);
-                    }
-                    for (int k = 0; k < (int) winners.size(); k++)
-                    {
-                        printf("%s\n", winners[k].c_str());
-                        std::string msg = winners[k] + '\n';
-                        sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
-                    }
+                        sendToAllInRoom("winner of round:\n", 17, GameRooms[i].RoomName);
+
                     GameRooms[i].ActiveGame = false;
                     GameRooms[i].EndGame = false;
-                    for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
-                    {
-                        users[GameRooms[i].players[j]].GamePoints += users[GameRooms[i].players[j]].points;
-                        users[GameRooms[i].players[j]].points = 0;
-                        for (int k = 0; k < 5; k++)
-                        {
-                            users[GameRooms[i].players[j]].word[k] = "";
-                        }
-                    }
-                    int MaxEndPoints = 0;
-                    winners.clear();
-                    if (GameRooms[i].RoundsLeft <= 0)
-                    {
-                        for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
-                        {
-                            if (users[GameRooms[i].players[j]].GamePoints + users[GameRooms[i].players[j]].TimePoints > MaxEndPoints)
-                            {
-                                MaxEndPoints = users[GameRooms[i].players[j]].GamePoints + users[GameRooms[i].players[j]].TimePoints;
-                                winners.clear();
-                                winners.push_back(users[GameRooms[i].players[j]].username);
-                            }
-                            else if (users[GameRooms[i].players[j]].points == MaxEndPoints)
-                            {
-                                winners.push_back(users[GameRooms[i].players[j]].username);
-                            }
-                            users[GameRooms[i].players[j]].GamePoints = 0;
-                            users[GameRooms[i].players[j]].TimePoints = 0;
-                        }
-                        if (winners.size() > 1)
-                        {
-                            printf("winners:\n");
-                            sendToAllInRoom("winners:\n", sizeof("winners:\n"), GameRooms[i].RoomName);
-                        }
-                        else
-                        {
-                            printf("winner:\n");
-                            sendToAllInRoom("winner:\n", sizeof("winner:\n"), GameRooms[i].RoomName);
-                        }
-                        printf("They got %d points\n",MaxEndPoints);
-                        for (int k = 0; k < (int) winners.size(); k++)
-                        {
-                            printf("%s\n", winners[k].c_str());
-                            std::string msg = winners[k] + '\n';
-                            sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[i].RoomName);
-                        }
-                        for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++)
-                        {
-                            users[GameRooms[i].players[j]].room = "Start";
-                            users[GameRooms[i].players[j]].CustomRoom = "";
-                            users[GameRooms[i].players[j]].InActiveGame = false;
 
-                            std::string msg = "left successfuly\n";
-                            write(fds[GameRooms[i].players[j]].fd, msg.c_str(), msg.size());
+                    for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++) {
+                        int player_id = GameRooms[i].players[j];
+                        users[player_id].GamePoints += users[player_id].points;
+                        users[player_id].points = 0;
+
+                        for (int k = 0; k < 5; k++)
+                            users[player_id].word[k].clear();
+                    }
+
+                    if (GameRooms[i].RoundsLeft <= 0) {
+                        int MaxEndPoints = 0;
+                        std::vector<std::string> gameWinners;
+
+                        for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++){
+                            int player_id = GameRooms[i].players[j];
+                            int total = users[player_id].GamePoints + users[player_id].TimePoints;
+
+                            if (total > MaxEndPoints) {
+                                MaxEndPoints = total;
+                                gameWinners.clear();
+                                gameWinners.push_back(users[player_id].username);
+                            }
+                            else if (total == MaxEndPoints) {
+                                gameWinners.push_back(users[player_id].username);
+                            }
                         }
+
+                        if (gameWinners.size() > 1)
+                            sendToAllInRoom("winners:\n", 9, GameRooms[i].RoomName);
+                        else
+                            sendToAllInRoom("winner:\n", 8, GameRooms[i].RoomName);
+
+                        sendToAllInRoom("left successfuly\n", 17, GameRooms[i].RoomName);
+
+                        for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++) {
+                            int player_id = GameRooms[i].players[j];
+                            users[player_id].room = "Start";
+                            users[player_id].CustomRoom.clear();
+                            users[player_id].InActiveGame = false;
+                            users[player_id].GamePoints = 0;
+                            users[player_id].TimePoints = 0;
+                        }
+
                         GameRooms[i].NumberOfPlayers = 0;
                     }
-                    else
-                    {
+                    else {
                         GameRooms[i].StartAgain = true;
                     }
 
@@ -815,8 +799,6 @@ int main(int argc, char **argv)
         }
 
         sendRoomInformationInLobby();
-
-        //sendRoomInformation();
     }
 
     close(servSock);
