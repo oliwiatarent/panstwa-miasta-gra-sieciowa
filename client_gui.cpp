@@ -296,6 +296,9 @@ public:
         });
 
         connect(worker, &NetworkWorker::roomJoin, this, [this](){
+            letter->setText("Litera: ?");
+            notif->setVisible(false);
+            ans1->clear(); ans2->clear(); ans3->clear(); ans4->clear(); ans5->clear();
             if (isAdmin) {
                 stackedWidget->setCurrentIndex(3); // ekran gry admina
                 adminPlayerList->clear();
