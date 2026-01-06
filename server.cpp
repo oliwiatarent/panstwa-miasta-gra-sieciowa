@@ -292,9 +292,9 @@ int main(int argc, char **argv)
                 {
                     users[i].inputBuff.append(buf, bytes);
 
-                    auto pos = 0;
+                size_t pos = 0;
                     // póki znajdujemy znak końca komendy
-                    while ((const size_t) (pos = users[i].inputBuff.find('\n')) != std::string::npos) {
+                    while ((pos = users[i].inputBuff.find('\n')) != std::string::npos) {
                         std::string fullCommand = users[i].inputBuff.substr(0, pos);
                         users[i].inputBuff.erase(0, pos+1); // +1 bo z \n
 
