@@ -414,7 +414,9 @@ int main(int argc, char **argv)
 
                                         for (int j = 1; j < NumberOfRooms; j++)
                                         {
-                                            if (GameRooms[j].ActiveGame == false && strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0 && GameRooms[j].NumberOfPlayers < GameRooms[j].PlayersLimit)
+                                            bool isAdmin = (strcmp(users[i].username.c_str(), "admin") == 0);
+
+                                            if ((GameRooms[j].ActiveGame == false || isAdmin) && strcmp(GameRooms[j].RoomName.c_str(), users[i].recv[1].c_str()) == 0 && GameRooms[j].NumberOfPlayers < GameRooms[j].PlayersLimit)
                                             {
                                                 JoinedRoom = true;
                                                 write(fds[i].fd, "Joining Room\n", sizeof("Joining Room\n"));
@@ -423,9 +425,17 @@ int main(int argc, char **argv)
                                                 printf("Joined Room: %s\n", users[i].recv[1].c_str());
                                                 users[i].room = "CustomRoom";
                                                 users[i].CustomRoom = users[i].recv[1];
+
+                                                if (GameRooms[j].ActiveGame && isAdmin) {
+                                                    users[i].InActiveGame = true;
+                                                    write(fds[i].fd, "Your game started\n", sizeof("Your game started\n"));
+                                                    std::string msgLett = "Litera: " + std::string(1, GameRooms[j].GameLetter) + "\n";
+                                                    write(fds[i].fd, msgLett.c_str(), msgLett.size());
+                                                }
                                                 // do wyświetlania listy graczy
                                                 std::string msg = "Points:" + users[i].username + ":" + std::to_string(users[i].GamePoints) + "\n";
                                                 sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[j].RoomName);
+
                                                 for (int k = 0; k < GameRooms[j].NumberOfPlayers; k++)
                                                 {
                                                     int player = GameRooms[j].players[k];
