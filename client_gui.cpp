@@ -499,22 +499,35 @@ private slots:
     }
 
     void updateScoreboard(QString user, int points) {
+        tableScores->setSortingEnabled(false);
+        bool found = false;
         for (int i=0; i<tableScores->rowCount(); ++i) {
             if (tableScores->item(i, 0)->text() == user) {
-                tableScores->item(i, 1)->setText(QString::number(points));
+                // setData dla sortowania
+                tableScores->item(i, 1)->setData(Qt::DisplayRole, points);
+                //tableScores->item(i, 1)->setText(QString::number(points));
                 for (int col=0; col<2; ++col) {
                     QFont f = tableScores->item(i, col)->font();
                     f.setStrikeOut(false);
                     tableScores->item(i, col)->setFont(f);
                 }
-                return;
+                found = true;
+                break;
             }
         }
         // dodaje nowego gracza do tabeli
-        int row = tableScores->rowCount();
-        tableScores->insertRow(row);
-        tableScores->setItem(row, 0, new QTableWidgetItem(user));
-        tableScores->setItem(row, 1, new QTableWidgetItem(QString::number(points)));
+        if (!found) {
+            int row = tableScores->rowCount();
+            tableScores->insertRow(row);
+            tableScores->setItem(row, 0, new QTableWidgetItem(user));
+
+            QTableWidgetItem *scoreItem = new QTableWidgetItem();
+            scoreItem->setData(Qt::DisplayRole, points);
+            tableScores->setItem(row, 1, scoreItem);
+            //tableScores->setItem(row, 1, new QTableWidgetItem(QString::number(points)));
+        }
+        tableScores->setSortingEnabled(true);
+        tableScores->sortItems(1, Qt::DescendingOrder);
     }
 
     void markPlayerAsLeft(QString player) {
