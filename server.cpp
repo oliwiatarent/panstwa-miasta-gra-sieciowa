@@ -476,6 +476,38 @@ int main(int argc, char **argv)
                                     printf("set players limit in room %s to %s\n", GameRooms[RoomIndex].RoomName.c_str(), users[i].recv[1].c_str());
                                 }
 
+                                if (strcmp(users[i].recv[0].c_str(), "KickPlayer") == 0) {
+                                    int RoomIndex = findroom(users[i].CustomRoom);
+                                    if ((GameRooms[RoomIndex].owner == i || strcmp(users[i].username.c_str(), "admin") == 0) && strcmp(users[i].username.c_str(), users[i].recv[1].c_str()) != 0)
+                                    {
+                                        bool found = false;
+                                        for (int j = 0; j < GameRooms[RoomIndex].NumberOfPlayers; j++)
+                                        {
+                                            if (strcmp(users[GameRooms[RoomIndex].players[j]].username.c_str(), users[i].recv[1].c_str()) == 0)
+                                            {
+                                                std::string msgLeft = "PlayerLeft:" + users[GameRooms[RoomIndex].players[j]].username + "\n";
+                                                sendToAllInRoom(msgLeft.c_str(), msgLeft.size(), GameRooms[RoomIndex].RoomName);
+
+                                                std::string msgKick = "left successfuly\n";
+                                                write(fds[GameRooms[RoomIndex].players[j]].fd, msgKick.c_str(), msgKick.size());
+
+                                                users[GameRooms[RoomIndex].players[j]].room = "Start";
+                                                users[GameRooms[RoomIndex].players[j]].CustomRoom = "";
+                                                if (GameRooms[RoomIndex].owner == GameRooms[RoomIndex].players[j])
+                                                    GameRooms[RoomIndex].owner = i;
+                                                found = true;
+                                                GameRooms[RoomIndex].NumberOfPlayers--;
+                                                printf("kicked player %s\n", users[i].recv[1].c_str());
+                                            }
+
+                                            if (found && j + 1 < GameRooms[RoomIndex].NumberOfPlayers + 1)
+                                            {
+                                                GameRooms[RoomIndex].players[j] = GameRooms[RoomIndex].players[j + 1];
+                                            }
+                                        }
+                                    }
+                                }
+
                                 if (strcmp(users[i].recv[0].c_str(), "SendAnswers") == 0 && users[i].InActiveGame == true)
                                 {
                                     printf("got something\n");
