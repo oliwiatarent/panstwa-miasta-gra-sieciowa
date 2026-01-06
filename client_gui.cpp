@@ -29,6 +29,7 @@
 #include <QTableWidget>
 #include <QSpinBox>
 #include <QHeaderView>
+#include <QTimer>
 
 
 class NetworkWorker : public QObject {
@@ -48,6 +49,7 @@ signals:
     void roomLeft();
     void playerLeftGame(QString player);
     void gameStarted(QString letter);
+    void gameEnded();
 
 public:
     int sock = -1;
@@ -139,6 +141,12 @@ public:
                             }
                             else if (msg.contains("left successfuly")) {
                                 emit roomLeft();
+                            }
+                            else if (msg.contains("game ended")) {
+                                emit gameEnded();
+                                QTimer::singleShot(8000, this, [this]() {
+                                    emit roomLeft();
+                                });
                             }
                             else if (msg.contains("Litera:")) {
                                 // Litera: X
@@ -296,6 +304,11 @@ public:
             letter->setText("Litera: " + lett);
             appendLog("[INFO] Rozpoczeto gre. Litera: " + lett);
             notif->setVisible(false);
+        });
+
+        connect(worker, &NetworkWorker::gameEnded, this, [this](){
+            notif->setText("Koniec gry!");
+            notif->setVisible(true);
         });
 
         connect(worker, &NetworkWorker::playerLeftGame, this, [this](QString player){

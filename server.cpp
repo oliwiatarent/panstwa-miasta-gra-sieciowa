@@ -134,14 +134,7 @@ void StartGame(int i)
         GameRooms[RoomIndex].GameLetter = 'A' + rand() % 26;
         printf("%c\n", GameRooms[RoomIndex].GameLetter);
 
-        for (int j = 1; j < NumberOfUsers; j++)
-        {
-            if (strcmp(users[j].CustomRoom.c_str(), GameRooms[RoomIndex].RoomName.c_str()) == 0)
-            {
-                users[j].InActiveGame = true;
-                write(fds[j].fd, "Your game started\n", sizeof("Your game started\n"));
-            }
-        }
+        sendToAllInRoom("Your game started\n", sizeof("Your game started\n"), GameRooms[RoomIndex].RoomName); 
         GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
         printf("activeted game for room and all players\n");
 
@@ -800,7 +793,7 @@ int main(int argc, char **argv)
                         else
                             sendToAllInRoom("winner:\n", 8, GameRooms[i].RoomName);
 
-                        sendToAllInRoom("left successfuly\n", 17, GameRooms[i].RoomName);
+                        sendToAllInRoom("game ended\n", 17, GameRooms[i].RoomName);
 
                         for (int j = 0; j < GameRooms[i].NumberOfPlayers; j++) {
                             int player_id = GameRooms[i].players[j];
