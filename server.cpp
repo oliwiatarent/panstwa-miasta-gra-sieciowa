@@ -120,7 +120,6 @@ void sendRoomInformationInLobby()
 }
 void StartGame(int i)
 {
-    users[i].InActiveGame = true;
     int RoomIndex = -1;
     for (int j = 0; j < NumberOfRooms; j++)
     {
@@ -128,6 +127,7 @@ void StartGame(int i)
         {
             GameRooms[j].ActiveGame = true;
             RoomIndex = j;
+            break;
         }
     }
     if (RoomIndex != -1)
@@ -135,7 +135,10 @@ void StartGame(int i)
         GameRooms[RoomIndex].GameLetter = 'A' + rand() % 26;
         printf("%c\n", GameRooms[RoomIndex].GameLetter);
 
-        sendToAllInRoom("Your game started\n", sizeof("Your game started\n"), GameRooms[RoomIndex].RoomName);
+        for (int k = 0; k < GameRooms[RoomIndex].NumberOfPlayers; ++k) {
+            users[GameRooms[RoomIndex].players[k]].InActiveGame = true;
+            write(fds[GameRooms[RoomIndex].players[k]].fd, "Your game started\n", sizeof("Your game started\n"));
+        }
         GameRooms[RoomIndex].StartTime = std::chrono::system_clock::now();
         printf("activeted game for room and all players\n");
 
@@ -294,7 +297,7 @@ int main(int argc, char **argv)
                 {
                     users[i].inputBuff.append(buf, bytes);
 
-                size_t pos = 0;
+                    size_t pos = 0;
                     // póki znajdujemy znak końca komendy
                     while ((pos = users[i].inputBuff.find('\n')) != std::string::npos) {
                         std::string fullCommand = users[i].inputBuff.substr(0, pos);
