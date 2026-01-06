@@ -303,7 +303,6 @@ public:
                 adminEditRoomName->setText(currRoomName);
             } else {
                 stackedWidget->setCurrentIndex(2); // ekran gry
-                tableScores->setRowCount(0);
                 currRoom->setText("Pokój: " + currRoomName);
             }
             appendLog("[INFO] Dolaczono do pokoju.");
@@ -312,6 +311,7 @@ public:
         connect(worker, &NetworkWorker::roomLeft, this, [this](){
             stackedWidget->setCurrentIndex(1); // ekran lobby
             currRoomName = "";
+            tableScores->setRowCount(0);
             appendLog("[INFO] Opuszczono pokoj.");
         });
 

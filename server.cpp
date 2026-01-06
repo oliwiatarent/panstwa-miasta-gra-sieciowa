@@ -424,15 +424,15 @@ int main(int argc, char **argv)
                                                 users[i].room = "CustomRoom";
                                                 users[i].CustomRoom = users[i].recv[1];
                                                 // do wyświetlania listy graczy
-                                                std::string msg = "Points:" + users[i].username + ":0\n";
+                                                std::string msg = "Points:" + users[i].username + ":" + std::to_string(users[i].GamePoints) + "\n";
                                                 sendToAllInRoom(msg.c_str(), msg.size(), GameRooms[j].RoomName);
                                                 for (int k = 0; k < GameRooms[j].NumberOfPlayers; k++)
                                                 {
                                                     int player = GameRooms[j].players[k];
                                                     if (player != i)
                                                     {
-                                                        std::string msg = "Points:" + users[player].username + ":0\n";
-                                                        write(fds[i].fd, msg.c_str(), msg.size());
+                                                        std::string msg2 = "Points:" + users[player].username + ":" + std::to_string(users[player].GamePoints) + "\n";
+                                                        write(fds[i].fd, msg2.c_str(), msg2.size());
                                                     }
                                                 }
                                             } else if (GameRooms[j].NumberOfPlayers == GameRooms[j].PlayersLimit) {
