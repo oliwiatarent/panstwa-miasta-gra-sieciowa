@@ -17,6 +17,7 @@
 #include <map>
 #include <chrono>
 #include <sstream>
+#include <time.h>
 
 #define MAX_CLIENTS 99999
 #define MAX_GAMEROOMS 10
@@ -213,6 +214,7 @@ long long count_milliseconds(std::chrono::system_clock::time_point start)
 
 int main(int argc, char **argv)
 {
+    srand(time(NULL));
     signal(SIGPIPE, SIG_IGN);
 
     if (argc != 2)
