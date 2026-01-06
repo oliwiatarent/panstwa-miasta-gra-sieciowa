@@ -29,7 +29,6 @@
 #include <QTableWidget>
 #include <QSpinBox>
 #include <QHeaderView>
-#include <QTimer>
 
 
 class NetworkWorker : public QObject {
@@ -142,12 +141,6 @@ public:
                             else if (msg.contains("left successfuly")) {
                                 emit roomLeft();
                             }
-                            else if (msg.contains("game ended")) {
-                                emit gameEnded();
-                                QTimer::singleShot(8000, this, [this]() {
-                                    emit roomLeft();
-                                });
-                            }
                             else if (msg.contains("Litera:")) {
                                 // Litera: X
                                 QString letter = msg.section(":", 1).trimmed();
@@ -161,12 +154,12 @@ public:
                             else {
                                 emit logMessage(msg);
 
-                                //sygnal do odliczania
+                                //sygnał do odliczania
                                 if (msg.contains("RoundEnding")) {
                                     emit roundEndingSoon();
                                 }
 
-                                //sygnal konca rundy
+                                //sygnał końca rundy
                                 if (msg.contains("winner"))
                                     emit roundFinished();
 
@@ -194,16 +187,17 @@ class MainWindow : public QMainWindow {
 
     NetworkWorker* worker;
     std::thread netThread;
+    bool isAdmin = false;
 
     // UI
     QStackedWidget *stackedWidget;
     QTextEdit *consoleLog;
 
-    // Ekran 1 - login
+    // Ekran 0 - login
     QLineEdit *inputIp, *inputPort, *inputNick;
     QPushButton *btnConnect;
 
-    // Ekran 2 - lobby
+    // Ekran 1 - lobby
     QListWidget *listRooms;
     QLineEdit *inputNewRoomName;
     QSpinBox *cntRounds;
@@ -211,7 +205,7 @@ class MainWindow : public QMainWindow {
     QPushButton *btnCreate, *btnJoin;
     QString lastSelectedRoom = "";
 
-    // Ekran 3 - gra
+    // Ekran 2 - gra
     QLabel *currRoom;
     QTableWidget *tableScores;
     QLineEdit *ans1, *ans2, *ans3, *ans4, *ans5;
@@ -219,6 +213,18 @@ class MainWindow : public QMainWindow {
     QLabel *notif;
     QString currRoomName;
     QLabel *letter;
+
+    // Ekran 3 - gra [admin]
+    QListWidget *adminPlayerList;
+    QLineEdit *adminEditRoomName;
+    QSpinBox *adminCntRounds;
+    QSpinBox *adminCntPlayers;
+    QPushButton *adminBtnUpdateSettings;
+    QPushButton *adminBtnKick;
+    QPushButton *adminBtnDeleteRoom;
+    QPushButton *adminBtnRenameRoom;
+    QPushButton *adminBtnLeave;
+    QLabel *adminRoomName;
 
 
 public:
@@ -231,6 +237,15 @@ public:
 
         connect(worker, &NetworkWorker::connectedToServer, this, [this](){
             appendLog("[INFO] Polaczono! Wysylam nick...");
+            QString nick = inputNick->text();
+
+            if (nick == "admin") {
+                isAdmin = true;
+                appendLog("[ADMIN] Wlaczono tryb administratora.");
+            } else {
+                isAdmin = false;
+            }
+
             worker->sendCommand(inputNick->text().toStdString());
         });
 
@@ -274,9 +289,16 @@ public:
         });
 
         connect(worker, &NetworkWorker::roomJoin, this, [this](){
-            stackedWidget->setCurrentIndex(2); // ekran gry
-            tableScores->setRowCount(0);
-            currRoom->setText("Pokoj: " + currRoomName);
+            if (isAdmin) {
+                stackedWidget->setCurrentIndex(3); // ekran gry admina
+                adminPlayerList->clear();
+                adminRoomName->setText("Zarzadzanie pokojem: " + currRoomName);
+                adminEditRoomName->setText(currRoomName);
+            } else {
+                stackedWidget->setCurrentIndex(2); // ekran gry
+                tableScores->setRowCount(0);
+                currRoom->setText("Pokój: " + currRoomName);
+            }
             appendLog("[INFO] Dolaczono do pokoju.");
         });
 
@@ -287,32 +309,53 @@ public:
         });
 
         connect(worker, &NetworkWorker::scoreUpdate, this, [this](QString user, int points){
-            updateScoreboard(user, points);
+            if (isAdmin && stackedWidget->currentIndex() == 3) {
+                updateAdminPlayerList(user);
+            } else {
+                updateScoreboard(user, points);
+            }
         });
 
         connect(worker, &NetworkWorker::roundEndingSoon, this, [this](){
-            notif->setText("Uwaga! Runda zakonczy sie za chwile!");
-            notif->setVisible(true);
+            if (!isAdmin) {
+                notif->setText("Uwaga! Runda zakonczy sie za chwile!");
+                notif->setVisible(true);
+            }
         });
 
         connect(worker, &NetworkWorker::roundFinished, this, [this](){
-            notif->setVisible(false);
-            appendLog("[INFO] Koniec rundy. Wyniki:");
+            if (!isAdmin) {
+                notif->setVisible(false);
+                appendLog("[INFO] Koniec rundy. Wyniki:");
+            }
         });
 
         connect(worker, &NetworkWorker::gameStarted, this, [this](QString lett){
-            letter->setText("Litera: " + lett);
-            appendLog("[INFO] Rozpoczeto gre. Litera: " + lett);
-            notif->setVisible(false);
+            if (!isAdmin) {
+                letter->setText("Litera: " + lett);
+                appendLog("[INFO] Rozpoczeto gre. Litera: " + lett);
+                notif->setVisible(false);
+            } else {
+                appendLog("[ADMIN] Gra rozpoczela sie (Litera: " + lett + ")");
+            }
         });
 
         connect(worker, &NetworkWorker::gameEnded, this, [this](){
-            notif->setText("Koniec gry!");
-            notif->setVisible(true);
+            if (!isAdmin) {
+                notif->setText("Koniec gry!");
+                notif->setVisible(true);
+            } else {
+                appendLog("[ADMIN] Gra zakonczona.");
+            }
         });
 
         connect(worker, &NetworkWorker::playerLeftGame, this, [this](QString player){
-            markPlayerAsLeft(player);
+            if (isAdmin && stackedWidget->currentIndex() == 3) {
+                QList<QListWidgetItem*> items = adminPlayerList->findItems(player, Qt::MatchExactly);
+                for (auto item : items) delete item;
+            } else {
+                markPlayerAsLeft(player);
+            }
             appendLog("[INFO] Gracz " + player + " opuscil gre.");
         });
     }
@@ -352,8 +395,6 @@ private slots:
         worker->sendCommand("CreateNewRoom " + name.toStdString());
         QString rounds = "SetRoundLimit " + QString::number(cntRounds->value());
         worker->sendCommand(rounds.toStdString());
-        QString players = "SetPlayersLimit " + QString::number(cntPlayers->value());
-        worker->sendCommand(players.toStdString());
     }
 
     void onJoinRoom() {
@@ -395,6 +436,57 @@ private slots:
 
         worker->sendCommand(msg.toStdString());
         appendLog("[INFO] Wyslano odpowiedzi.");
+    }
+
+    void onAdminKick() {
+        QListWidgetItem *item = adminPlayerList->currentItem();
+        if (!item) return;
+
+        QString playerToKick = item->text();
+        if (playerToKick == "admin") {
+            appendLog("[WARN] Nie mozesz siebie wyrzucic!");
+            return;
+        }
+        worker->sendCommand("KickPlayer " + playerToKick.toStdString());
+        appendLog("[ADMIN] Wyslano kick: " + playerToKick);
+    }
+
+    void onAdminDeleteRoom() {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,
+            "[ADMIN]", "Czy na pewno usunac ten pokoj?",
+            QMessageBox::Yes|QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            worker->sendCommand("DeleteRoom");
+            appendLog("[ADMIN] Wyslano polecenie usuniecia pokoju.");
+        }
+    }
+
+    void onAdminRename() {
+        QString newName = adminEditRoomName->text().trimmed();
+        if(newName.isEmpty()) return;
+
+        worker->sendCommand("ChangeRoomName " + newName.toStdString());
+        currRoomName = newName;
+        adminRoomName->setText("Zarzadzanie pokojem: " + currRoomName);
+        appendLog("[ADMIN] Zmieniono nazwa pokoju na: " + newName);
+    }
+
+    void onAdminUpdateSettings() {
+        QString rounds = "SetRoundLimit " + QString::number(adminCntRounds->value());
+        worker->sendCommand(rounds.toStdString());
+
+        QString players = "SetPlayersLimit " + QString::number(adminCntPlayers->value());
+        worker->sendCommand(players.toStdString());
+
+        appendLog("[ADMIN] Zaktualizowano ustawienia pokoju.");
+    }
+
+    void updateAdminPlayerList(QString user) {
+        auto items = adminPlayerList->findItems(user, Qt::MatchExactly);
+        if (items.isEmpty()) {
+            adminPlayerList->addItem(user);
+        }
     }
 
     void updateScoreboard(QString user, int points) {
@@ -462,12 +554,12 @@ private slots:
         QHBoxLayout *layoutCreate = new QHBoxLayout(createRoom);
         inputNewRoomName = new QLineEdit(); inputNewRoomName->setPlaceholderText("Nazwa pokoju");
         cntRounds = new QSpinBox();
-        cntRounds->setRange(1, 20);
-        cntRounds->setValue(2);
+        cntRounds->setRange(1, 10);
+        cntRounds->setValue(3);
         cntRounds->setPrefix("Rundy: ");
         cntPlayers = new QSpinBox();
-        cntPlayers->setRange(2, 8);
-        cntPlayers->setValue(4);
+        cntPlayers->setRange(3, 10);
+        cntPlayers->setValue(5);
         cntPlayers->setPrefix("Gracze: ");
         btnCreate = new QPushButton("Stworz");
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
@@ -511,7 +603,7 @@ private slots:
         tableScores->setHorizontalHeaderLabels({"Gracz", "Punkty"});
         tableScores->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         tableScores->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        tableScores->setMaximumHeight(300);
+        tableScores->setMaximumHeight(400);
 
         // odpowiedzi
         QGroupBox *grpAns = new QGroupBox("Twoje Odpowiedzi:");
@@ -543,12 +635,77 @@ private slots:
         layoutRoom->addWidget(notif);
         layoutRoom->addWidget(btnStart);
 
+        // panel admina
+        QWidget *pageAdmin = new QWidget;
+        QVBoxLayout *layoutAdmin = new QVBoxLayout(pageAdmin);
+
+        adminRoomName = new QLabel("Zarządzanie pokojem: ");
+        adminRoomName->setStyleSheet("font-weight: bold;");
+        layoutAdmin->addWidget(adminRoomName);
+
+        QGroupBox *grpAdminSettings = new QGroupBox("Ustawienia Pokoju");
+        QGridLayout *gridSettings = new QGridLayout(grpAdminSettings);
+
+        // grid do rozlozenia przyciskow
+        gridSettings->addWidget(new QLabel("Nazwa:"), 0, 0);
+        adminEditRoomName = new QLineEdit();
+        gridSettings->addWidget(adminEditRoomName, 0, 1);
+        adminBtnRenameRoom = new QPushButton("Zmien nazwe");
+        connect(adminBtnRenameRoom, &QPushButton::clicked, this, &MainWindow::onAdminRename);
+        gridSettings->addWidget(adminBtnRenameRoom, 0, 2);
+
+        gridSettings->addWidget(new QLabel("Rundy:"), 1, 0);
+        adminCntRounds = new QSpinBox();
+        adminCntRounds->setRange(2, 10);
+        adminCntRounds->setValue(3);
+        gridSettings->addWidget(adminCntRounds, 1, 1);
+        gridSettings->addWidget(new QLabel("Limit Graczy:"), 1, 2);
+        adminCntPlayers = new QSpinBox();
+        adminCntPlayers->setRange(3, 10);
+        adminCntPlayers->setValue(5);
+        gridSettings->addWidget(adminCntPlayers, 1, 3);
+
+        adminBtnUpdateSettings = new QPushButton("Zaktualizuj Limity");
+        connect(adminBtnUpdateSettings, &QPushButton::clicked, this, &MainWindow::onAdminUpdateSettings);
+        //fromRow fromColumn spanRow spanColumn
+        gridSettings->addWidget(adminBtnUpdateSettings, 2, 0, 1, 4);
+
+        layoutAdmin->addWidget(grpAdminSettings);
+
+        QGroupBox *grpPlayers = new QGroupBox("Gracze w pokoju");
+        QHBoxLayout *layoutPlayers = new QHBoxLayout(grpPlayers);
+        adminPlayerList = new QListWidget();
+
+        layoutPlayers->addWidget(adminPlayerList);
+
+        adminBtnKick = new QPushButton("KICK");
+        adminBtnKick->setStyleSheet("background-color: red; color: white");
+        connect(adminBtnKick, &QPushButton::clicked, this, &MainWindow::onAdminKick);
+
+        layoutPlayers->addWidget(adminBtnKick);
+        layoutAdmin->addWidget(grpPlayers);
+
+        QHBoxLayout *bottomAdmin = new QHBoxLayout;
+        adminBtnDeleteRoom = new QPushButton("USUN POKOJ");
+        adminBtnDeleteRoom->setStyleSheet("background-color: red; color: white;");
+        connect(adminBtnDeleteRoom, &QPushButton::clicked, this, &MainWindow::onAdminDeleteRoom);
+
+        adminBtnLeave = new QPushButton("Wyjdz do Lobby");
+        connect(adminBtnLeave, &QPushButton::clicked, this, &MainWindow::onLeaveRoom);
+
+        bottomAdmin->addWidget(adminBtnDeleteRoom);
+        bottomAdmin->addStretch();
+        bottomAdmin->addWidget(adminBtnLeave);
+        layoutAdmin->addLayout(bottomAdmin);
+
         // strony na stacku
         stackedWidget->addWidget(pageLogin); //0
         stackedWidget->addWidget(pageLobby); //1
         stackedWidget->addWidget(pageRoom);  //2
+        stackedWidget->addWidget(pageAdmin); //3
 
-        // [TESTOWO] konsola log�w
+
+        // [TESTOWO] konsola logów
         consoleLog = new QTextEdit;
         consoleLog->setReadOnly(true);
         consoleLog->setStyleSheet("background-color: #333; color: #0f0;");
@@ -565,7 +722,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     MainWindow w;
     w.setWindowTitle("Panstwa-Miasta");
-    w.resize(500, 700);
+    w.resize(600, 800);
     w.show();
     return app.exec();
 }
