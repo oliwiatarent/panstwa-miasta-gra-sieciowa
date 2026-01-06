@@ -29,6 +29,7 @@
 #include <QTableWidget>
 #include <QSpinBox>
 #include <QHeaderView>
+#include <QTimer>
 
 
 class NetworkWorker : public QObject {
@@ -141,6 +142,12 @@ public:
                             else if (msg.contains("left successfuly")) {
                                 emit roomLeft();
                             }
+                            else if (msg.contains("game ended")) {
+                                emit gameEnded();
+                                QTimer::singleShot(8000, this, [this]() {
+                                    emit roomLeft();
+                                });
+                            }
                             else if (msg.contains("Litera:")) {
                                 // Litera: X
                                 QString letter = msg.section(":", 1).trimmed();
@@ -154,12 +161,12 @@ public:
                             else {
                                 emit logMessage(msg);
 
-                                //sygnał do odliczania
+                                //sygnal do odliczania
                                 if (msg.contains("RoundEnding")) {
                                     emit roundEndingSoon();
                                 }
 
-                                //sygnał końca rundy
+                                //sygnal konca rundy
                                 if (msg.contains("winner"))
                                     emit roundFinished();
 
@@ -395,6 +402,8 @@ private slots:
         worker->sendCommand("CreateNewRoom " + name.toStdString());
         QString rounds = "SetRoundLimit " + QString::number(cntRounds->value());
         worker->sendCommand(rounds.toStdString());
+        QString players = "SetPlayersLimit " + QString::number(cntPlayers->value());
+        worker->sendCommand(players.toStdString());
     }
 
     void onJoinRoom() {
@@ -554,12 +563,12 @@ private slots:
         QHBoxLayout *layoutCreate = new QHBoxLayout(createRoom);
         inputNewRoomName = new QLineEdit(); inputNewRoomName->setPlaceholderText("Nazwa pokoju");
         cntRounds = new QSpinBox();
-        cntRounds->setRange(1, 10);
-        cntRounds->setValue(3);
+        cntRounds->setRange(1, 20);
+        cntRounds->setValue(2);
         cntRounds->setPrefix("Rundy: ");
         cntPlayers = new QSpinBox();
-        cntPlayers->setRange(3, 10);
-        cntPlayers->setValue(5);
+        cntPlayers->setRange(2, 8);
+        cntPlayers->setValue(4);
         cntPlayers->setPrefix("Gracze: ");
         btnCreate = new QPushButton("Stworz");
         connect(btnCreate, &QPushButton::clicked, this, &MainWindow::onCreateRoom);
@@ -603,7 +612,7 @@ private slots:
         tableScores->setHorizontalHeaderLabels({"Gracz", "Punkty"});
         tableScores->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         tableScores->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        tableScores->setMaximumHeight(400);
+        tableScores->setMaximumHeight(300);
 
         // odpowiedzi
         QGroupBox *grpAns = new QGroupBox("Twoje Odpowiedzi:");
@@ -704,8 +713,7 @@ private slots:
         stackedWidget->addWidget(pageRoom);  //2
         stackedWidget->addWidget(pageAdmin); //3
 
-
-        // [TESTOWO] konsola logów
+        // [TESTOWO] konsola logow
         consoleLog = new QTextEdit;
         consoleLog->setReadOnly(true);
         consoleLog->setStyleSheet("background-color: #333; color: #0f0;");
