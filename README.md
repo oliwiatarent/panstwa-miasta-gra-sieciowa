@@ -5,8 +5,9 @@
 ![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
 ![CMake](https://img.shields.io/badge/CMake-%23008FBA.svg?style=for-the-badge&logo=cmake&logoColor=white)
 
-A multiplayer network game project implementing the classic "Stop the bus" pen-and-paper game.  
-Written in C++ using BSD Sockets for the server and Qt6 for the client interface.
+A multiplayer network game project implementing the classic "Stop the bus" pen-and-paper game  
+created for the Networking course at PUT. Written in C++ using BSD Sockets for the server  
+and Qt6 for the client interface.
 
 ---
 
